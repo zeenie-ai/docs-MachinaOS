@@ -5,69 +5,79 @@ description: Set up MachinaOs on your local machine or server
 
 # Installation
 
-MachinaOs can be installed using npm for development or Docker for production.
+MachinaOs runs locally with the `machina` CLI. For production, deploy to a cloud VM with `machina deploy`.
 
 ## Prerequisites
 
-<Tabs>
-  <Tab title="Development">
-    - Node.js 18+
-    - Python 3.12+
-    - Git
-  </Tab>
-  <Tab title="Docker">
-    - Docker 20+
-    - Docker Compose 2+
-    - 2GB RAM minimum
-  </Tab>
-</Tabs>
+- Node.js 22+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/) (Python package manager)
+- Git
 
 ## Quick Install
 
 <Tabs>
-  <Tab title="npm (Development)">
+  <Tab title="Install the CLI">
+    Install MachinaOs globally and start it:
+
     ```bash
-    # Clone the repository
-    git clone https://github.com/trohitg/MachinaOS.git
-    cd MachinaOs
-
-    # Install dependencies
-    npm run build
-
-    # Start all services
-    npm run start
+    npm install -g machina
+    machina start
     ```
 
     The app will be available at:
     - Frontend: `http://localhost:3000`
     - Backend: `http://localhost:3010`
+    - Node.js executor: `http://localhost:3020`
     - WhatsApp: `http://localhost:9400`
+    - Temporal Web UI: `http://localhost:8080`
+
+    <Tip>
+      You can also run it without installing by using `npx machina start`.
+    </Tip>
   </Tab>
-  <Tab title="Docker (Recommended)">
+  <Tab title="From source">
     ```bash
     # Clone the repository
-    git clone https://github.com/trohitg/MachinaOS.git
-    cd MachinaOs
+    git clone https://github.com/zeenie-ai/MachinaOS.git
+    cd MachinaOS
 
-    # Build and start all services
-    npm run docker:build
-    npm run docker:up
+    # Build (installs client + server dependencies via uv)
+    npm run build
+
+    # Start all services (production mode)
+    npm run start
+
+    # Or start with hot-reload for development
+    npm run dev
     ```
 
-    This starts 4 containers:
-    - **frontend** - React app (port 3000)
-    - **backend** - FastAPI server (port 3010)
-    - **whatsapp** - Go WhatsApp service (port 9400)
-    - **redis** - Cache (port 6379, when enabled)
+    Under the hood the npm scripts call the `machina` CLI (`python -m cli start` / `dev` / `build`). The backend is managed by [uv](https://docs.astral.sh/uv/) (`uv sync` against `server/uv.lock`), not pip.
   </Tab>
 </Tabs>
 
+## CLI Commands
+
+The `machina` CLI (also available as `npx machina`) drives every lifecycle action:
+
+| Command | Description |
+|---------|-------------|
+| `machina start` | Start all services (production mode, clean output) |
+| `machina dev` | Start with hot-reload for development |
+| `machina build` | Install dependencies and build for production |
+| `machina serve` | Serve API + WebSocket + SPA on a single public port |
+| `machina stop` | Stop all running services |
+| `machina clean` | Clean build artifacts |
+| `machina deploy` | Provision a cloud VM running MachinaOs |
+
+Useful flags: `--verbose` / `-v` (full service logs), `--skip-whatsapp` (skip the WhatsApp service).
+
 ## Environment Configuration
 
-Copy the example environment file:
+Copy the environment template:
 
 ```bash
-cp .env.example .env
+cp .env.template .env
 ```
 
 ### Key Settings
@@ -124,6 +134,20 @@ GOOGLE_MAPS_API_KEY=
 If you see the workflow canvas with the component palette, installation is complete!
 </Check>
 
+## Production Deployment
+
+The recommended way to run MachinaOs in production is `machina deploy`, which provisions a login-gated cloud VM (currently Google Cloud) using your cloud CLI plus Terraform, then runs MachinaOs on a single port via `machina serve` under systemd:
+
+```bash
+machina deploy up --provider gcp --owner-email you@example.com   # provision + install + print URL/creds
+machina deploy status                                            # show URL + health
+machina deploy destroy                                           # tear down
+```
+
+<Info>
+  Docker Compose is a legacy/optional path and is no longer the recommended deployment method. If you need the container topology for reference, use `machina docker:up` from source.
+</Info>
+
 ## Troubleshooting
 
 <Accordion title="Port already in use">
@@ -132,25 +156,25 @@ If you see the workflow canvas with the component palette, installation is compl
   VITE_CLIENT_PORT=3001
   PYTHON_BACKEND_PORT=3011
   ```
+  MachinaOs also uses ports 3020 (Node.js executor), 9400 (WhatsApp), 7233 (Temporal gRPC), 8080 (Temporal Web UI), and 6379 (Redis, when enabled).
 </Accordion>
 
 <Accordion title="Python dependencies fail">
-  Create a virtual environment:
+  The backend is managed by [uv](https://docs.astral.sh/uv/). Sync the environment from the lock file:
   ```bash
   cd server
-  python -m venv venv
-  source venv/bin/activate  # or venv\Scripts\activate on Windows
-  pip install -r requirements.txt
+  uv sync
   ```
+  This creates `server/.venv` against `server/uv.lock`. Make sure `uv` is installed and on your PATH first.
 </Accordion>
 
-<Accordion title="Docker containers won't start">
-  Check logs and rebuild:
+<Accordion title="Services won't start">
+  Stop everything cleanly, then start again with full logs:
   ```bash
-  docker-compose logs -f
-  docker-compose down
-  docker-compose up --build -d
+  machina stop
+  machina start -v
   ```
+  If a build looks stale, run `machina clean` before `machina build`.
 </Accordion>
 
 ## Next Steps

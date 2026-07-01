@@ -1,15 +1,15 @@
 ---
 title: AI Skills
-description: Skill nodes that extend Chat Agent capabilities
+description: The Master Skill node aggregates skills that extend AI Agent and Chat Agent capabilities
 ---
 
 # AI Skills
 
-Skill nodes connect to the Chat Agent's `input-skill` handle to provide domain-specific capabilities. Each skill defines instructions and allowed tools that guide the Chat Agent's behavior.
+Skills are modular capabilities that guide an agent's behavior. In MachinaOs, you add skills through the **Master Skill** node, which aggregates many individual skills behind a single split-panel editor with enable/disable toggles. The Master Skill node connects to an agent's `input-skill` handle to inject the enabled skills' instructions and tools.
 
 ## How Skills Work
 
-Skills are modular capabilities defined in Markdown files (SKILL.md) that follow the [Agent Skills specification](https://agentskills.io/specification):
+Each skill is defined in a Markdown file (`SKILL.md`) with YAML frontmatter that follows the [Agent Skills specification](https://agentskills.io/specification):
 
 ```yaml
 ---
@@ -19,343 +19,145 @@ allowed-tools: tool1 tool2
 metadata:
   author: machina
   version: "1.0"
+  category: general
+  icon: "🔧"
+  color: "#6366F1"
 ---
 
 # Skill Instructions (Markdown)
-Detailed instructions loaded when skill is activated.
+Detailed instructions loaded when the skill is activated.
 ```
 
-When connected to a Chat Agent, the skill's instructions are added to the system prompt, and its allowed tools become available.
+When a skill is enabled in a Master Skill node connected to an agent, the skill's instructions are added to the system prompt, and any tools it references (via `allowed-tools`) can be used when the matching Tool nodes are wired to the agent.
 
 ### Database as Source of Truth
 
 Skill instructions follow a **DB-first architecture**:
 
-1. **First load** reads from the SKILL.md file on disk and seeds it into the database
+1. **First load** reads from the `SKILL.md` file on disk and seeds it into the database
 2. **After seeding**, the database is the single source of truth for all skill content
 3. **User edits** in the UI are saved to the database only (not written back to disk)
-4. **"Reset to Default"** reloads the original SKILL.md content from the filesystem
+4. **"Reset to Default"** reloads the original `SKILL.md` content from the filesystem
 
-This ensures that user customizations are always preserved in the database while the original SKILL.md files remain as defaults.
+This ensures your customizations are always preserved in the database while the original `SKILL.md` files remain as defaults.
 
-## Connecting Skills
+## The Master Skill Node
 
-Skills connect to the Chat Agent's **input-skill** handle (diamond shape):
+The Master Skill node (category: **AI Tools**) is the single node you use to attach skills to an agent. It has no Run button and no input/output data panels; it is a passive aggregator that the connected agent reads during execution.
+
+### Connecting
+
+The Master Skill node's **Skill** output connects to an agent's **input-skill** handle (diamond shape). You can also connect regular Tool nodes and a Simple Memory node to the same agent.
 
 ```
-[WhatsApp Skill] --+
-                   +--(skill handle)--> [Chat Agent] --> [Output]
-[Maps Skill] ------+
+[Master Skill] --(skill handle)--> [AI Agent] --> [Output]
 ```
 
-Multiple skills can be connected simultaneously.
+### Split-Panel Editor
 
----
+Selecting a Master Skill node opens a split-panel editor:
 
-## Available Skills
+- **Folder dropdown** at the top selects a skill folder (for example, `assistant`, `web_agent`, `coding_agent`).
+- **Left panel** lists the skills in that folder with a checkbox for each. Enabled skills are counted in a badge, and you can search the list.
+- **Right panel** shows the selected skill's Markdown instructions in an editor, with a **Reset to Default** button.
 
-| Skill | Description | Allowed Tools |
-|-------|-------------|---------------|
-| Assistant | Default assistant personality | None |
-| WhatsApp | Send/receive WhatsApp messages | whatsappSend, whatsappDb |
-| Memory | Long-term memory management | None |
-| Maps | Location services via Google Maps | createMap, addLocations, showNearbyPlaces |
-| HTTP | Make HTTP requests to APIs | httpRequest |
-| Scheduler | Task scheduling with timers/cron | None |
-| Android | Android device control | androidTool |
-| Code | Execute Python/JavaScript code | pythonExecutor, javascriptExecutor |
-| Web Search | Search the web | webSearchTool |
-| Custom | User-created custom skills | Configurable |
-
----
-
-## Assistant Skill
-
-Provides default assistant personality with helpful, harmless, honest responses.
+Enabled skills persist across all folders, not just the currently selected one, so switching folders never disables skills you turned on elsewhere.
 
 ### Parameters
 
-<ParamField path="skillName" type="string" default="assistant">
-  Skill identifier
+<ParamField path="skill_folder" type="string" default="assistant">
+  The skill folder currently shown in the editor's dropdown.
 </ParamField>
 
-### Behavior
-
-- Responds helpfully to general questions
-- Maintains conversation context
-- Polite and professional tone
-
-### Example Use Case
-
-Basic conversational assistant without specialized capabilities.
+<ParamField path="skills_config" type="object">
+  A map of skill name to its state (`enabled`, `instructions`, `isCustomized`). This is populated by the split-panel editor as you toggle and edit skills.
+</ParamField>
 
 ---
 
-## WhatsApp Skill
+## Built-in Skill Folders
 
-Enables the Chat Agent to send and receive WhatsApp messages.
+Skills are organized in subfolders under `server/skills/`. Each top-level folder appears as an option in the Master Skill node's folder dropdown. The current folders are:
 
-### Parameters
+<CardGroup cols={2}>
+  <Card title="assistant" icon="sparkles">
+    General assistant behavior — assistant personality, memory, write-todos, compaction, humanify, agent-builder, subagent
+  </Card>
+  <Card title="web_agent" icon="globe">
+    Web automation — HTTP requests, browser, DuckDuckGo/Brave/Serper/Perplexity search, Apify, Crawlee scraper, proxy config
+  </Card>
+  <Card title="coding_agent" icon="code">
+    Code and files — Python, Monty (sandboxed Python), JavaScript, file read/modify, filesystem search
+  </Card>
+  <Card title="terminal" icon="terminal">
+    Shell and processes — shell (Nushell), process manager, bash, PowerShell, WSL
+  </Card>
+  <Card title="social_agent" icon="message">
+    Social messaging — WhatsApp send, WhatsApp DB, Twitter send/search/user
+  </Card>
+  <Card title="productivity_agent" icon="briefcase">
+    Google Workspace — Gmail, Calendar, Drive, Sheets, Tasks, Contacts
+  </Card>
+  <Card title="task_agent" icon="list-check">
+    Task automation — timer, cron scheduler, task manager
+  </Card>
+  <Card title="travel_agent" icon="map">
+    Location — geocoding, nearby places
+  </Card>
+  <Card title="android_agent" icon="mobile">
+    Android device control — battery, WiFi, Bluetooth, apps, camera, sensors, screen control, location
+  </Card>
+  <Card title="autonomous" icon="robot">
+    Autonomous patterns — agentic loop, code mode, progressive discovery, error recovery, multi-tool orchestration
+  </Card>
+  <Card title="payments_agent" icon="credit-card">
+    Payments — Stripe
+  </Card>
+  <Card title="rlm_agent" icon="brain">
+    Recursive Language Model reasoning
+  </Card>
+</CardGroup>
 
-<ParamField path="skillName" type="string" default="whatsapp">
-  Skill identifier
-</ParamField>
-
-### Allowed Tools
-
-- `whatsappSend` - Send messages (text, media, location, contact)
-- `whatsappDb` - Query chat history, contacts, groups
-
-### Behavior
-
-- Can send messages to individuals and groups
-- Can retrieve chat history and contact information
-- Handles media attachments (images, videos, documents)
-
-### Example Use Case
-
-```
-User: "Send a message to John saying I'll be late"
-Agent: [Uses whatsappSend to send message to John]
-       "I've sent the message to John."
-```
-
----
-
-## Memory Skill
-
-Enables long-term memory management across conversations.
-
-### Parameters
-
-<ParamField path="skillName" type="string" default="memory">
-  Skill identifier
-</ParamField>
-
-### Behavior
-
-- Can store important information for later retrieval
-- Semantic search of stored memories
-- User preferences and facts retention
-
-### Example Use Case
-
-```
-User: "Remember that my favorite color is blue"
-Agent: [Stores preference in memory]
-       "I'll remember that your favorite color is blue."
-
-[Later conversation]
-User: "What's my favorite color?"
-Agent: [Retrieves from memory]
-       "Your favorite color is blue."
-```
+<Info>
+The exact skills within each folder evolve over time. Use the folder dropdown in the Master Skill editor to see the live list scanned from disk.
+</Info>
 
 ---
 
-## Maps Skill
+## Skill Content Editor
 
-Provides location services via Google Maps API.
+The right panel of the Master Skill editor is a built-in Markdown editor for viewing and editing a skill's instructions:
 
-### Parameters
+1. Select a Master Skill node and pick a folder
+2. Click a skill in the left panel to load its instructions on the right
+3. Make changes as needed
+4. Changes are saved to the database; click **Reset to Default** to restore the original `SKILL.md`
 
-<ParamField path="skillName" type="string" default="maps">
-  Skill identifier
-</ParamField>
-
-### Allowed Tools
-
-- `createMap` - Create maps with custom center and zoom
-- `addLocations` - Geocode addresses to coordinates
-- `showNearbyPlaces` - Find nearby places (restaurants, stores, etc.)
-
-### Behavior
-
-- Address to coordinates conversion (geocoding)
-- Find nearby places by type
-- Get directions and distance
-
-### Example Use Case
-
-```
-User: "Find coffee shops near Times Square"
-Agent: [Uses addLocations to geocode, then showNearbyPlaces]
-       "I found 5 coffee shops near Times Square:
-        1. Starbucks - 0.1 miles
-        2. Blue Bottle Coffee - 0.2 miles
-        ..."
-```
+<Info>
+Edits are saved to the database only. The original `SKILL.md` file on disk is not modified.
+</Info>
 
 ---
 
-## HTTP Skill
+## Custom Skills
 
-Enables the Chat Agent to make HTTP requests to external APIs.
+You can create your own skills directly from the Master Skill editor.
 
-### Parameters
+<Steps>
+  <Step title="Open the Master Skill editor">
+    Select a Master Skill node connected to your agent.
+  </Step>
+  <Step title="Create a new skill">
+    Click the **+** button in the left panel. Provide a name, display name, and instructions.
+  </Step>
+  <Step title="Enable and use it">
+    Toggle the new skill on. Its enabled state and instructions are saved to the node and persist across panel close and reload.
+  </Step>
+</Steps>
 
-<ParamField path="skillName" type="string" default="http">
-  Skill identifier
-</ParamField>
+User-created skills are stored in the database and can be created, edited, and deleted inline. They load through the same path as built-in skills, so their instructions appear in the editor the same way.
 
-### Allowed Tools
-
-- `httpRequest` - Make GET, POST, PUT, DELETE, PATCH requests
-
-### Behavior
-
-- Call external REST APIs
-- Handle JSON request/response
-- Set custom headers and authentication
-
-### Example Use Case
-
-```
-User: "Get the current Bitcoin price from CoinGecko"
-Agent: [Uses httpRequest to call CoinGecko API]
-       "The current Bitcoin price is $45,230."
-```
-
----
-
-## Scheduler Skill
-
-Enables task scheduling with timers and cron expressions.
-
-### Parameters
-
-<ParamField path="skillName" type="string" default="scheduler">
-  Skill identifier
-</ParamField>
-
-### Behavior
-
-- Schedule one-time tasks
-- Set up recurring tasks with cron expressions
-- Manage scheduled task list
-
-### Example Use Case
-
-```
-User: "Remind me to check email every morning at 9am"
-Agent: [Creates cron schedule]
-       "I've scheduled a reminder to check email at 9am daily."
-```
-
----
-
-## Android Skill
-
-Enables Android device control and monitoring.
-
-### Parameters
-
-<ParamField path="skillName" type="string" default="android">
-  Skill identifier
-</ParamField>
-
-### Allowed Tools
-
-- `androidTool` - Gateway to Android service nodes
-
-### Behavior
-
-- Check device status (battery, network, location)
-- Control device settings (WiFi, Bluetooth, screen)
-- Launch apps and manage applications
-- Read sensor data (motion, environment)
-
-### Example Use Case
-
-```
-User: "Turn on WiFi and check the battery level"
-Agent: [Uses androidTool to enable WiFi and check battery]
-       "WiFi is now enabled. Battery is at 67% and charging."
-```
-
----
-
-## Code Skill
-
-Enables Python and JavaScript code execution for calculations and data processing.
-
-### Parameters
-
-<ParamField path="skillName" type="string" default="code">
-  Skill identifier
-</ParamField>
-
-### Allowed Tools
-
-- `pythonExecutor` - Execute Python code
-- `javascriptExecutor` - Execute JavaScript code
-
-### Behavior
-
-- Perform complex calculations
-- Process and transform data
-- Generate formatted output
-
-### Example Use Case
-
-```
-User: "Calculate the compound interest on $10,000 at 5% for 10 years"
-Agent: [Uses pythonExecutor to calculate]
-       "The compound interest on $10,000 at 5% for 10 years is $6,288.95,
-        giving a total of $16,288.95."
-```
-
----
-
-## Web Search Skill
-
-Enables web search capabilities via DuckDuckGo or Serper API.
-
-### Parameters
-
-<ParamField path="skillName" type="string" default="webSearch">
-  Skill identifier
-</ParamField>
-
-### Allowed Tools
-
-- `webSearchTool` - Search the web
-
-### Behavior
-
-- Search for current information
-- Find relevant web pages
-- Get real-time data not in training
-
-### Example Use Case
-
-```
-User: "What are the latest news about SpaceX?"
-Agent: [Uses webSearchTool]
-       "Here are the latest SpaceX news:
-        1. SpaceX launches 23 Starlink satellites...
-        2. Starship test flight scheduled for..."
-```
-
----
-
-## Custom Skill
-
-User-created skills with configurable capabilities.
-
-### Parameters
-
-<ParamField path="skillName" type="select" required>
-  Select from skills stored in the database
-</ParamField>
-
-### Creating Custom Skills
-
-1. Create a SKILL.md file with the required format
-2. Store in the database via the Skills API
-3. Select in the Custom Skill node
-
-### SKILL.md Format
+### SKILL.md Format for Custom Skills
 
 ```yaml
 ---
@@ -365,6 +167,9 @@ allowed-tools: httpRequest calculatorTool
 metadata:
   author: your-name
   version: "1.0"
+  category: general
+  icon: "🔧"
+  color: "#6366F1"
 ---
 
 # Custom Skill Instructions
@@ -382,98 +187,39 @@ You are a specialized assistant that...
 
 ---
 
-## Skill Content Editor
+## Skills and Tools Work Together
 
-Skill nodes include a built-in markdown editor for viewing and editing skill instructions:
+A skill's `allowed-tools` list tells the agent which tools it may use for that skill's tasks. The tools themselves come from Tool nodes wired to the agent's `input-tools` handle. In practice:
 
-1. Select a skill node
-2. View the skill instructions in the markdown editor
-3. Make changes as needed
-4. Click **Save** to persist changes to the database
-
-<Info>
-Edits are saved to the database only. The original SKILL.md file on disk is not modified.
-</Info>
-
----
-
-## Skill Folder Organization
-
-Skills are organized in subfolders under `server/skills/`. The skill loader uses **recursive scanning** (`rglob("SKILL.md")`) to discover skills at any nesting depth:
+- **Skill** — teaches the agent *how* and *when* to act (instructions in the system prompt)
+- **Tool** — gives the agent the actual capability to act (the executable node)
 
 ```
-server/skills/
-├── assistant/                    # General-purpose assistant skills
-│   ├── assistant-personality/SKILL.md
-│   ├── code-skill/SKILL.md
-│   ├── http-skill/SKILL.md
-│   ├── maps-skill/SKILL.md
-│   ├── memory-skill/SKILL.md
-│   ├── scheduler-skill/SKILL.md
-│   ├── web-search-skill/SKILL.md
-│   └── whatsapp-skill/SKILL.md
-└── android/                      # Android device control skills
-    ├── personality/SKILL.md
-    └── skill/SKILL.md
+[Master Skill] --(skill handle)-------+
+                                       +---> [AI Agent] --> [Output]
+[WhatsApp Send tool] --(tools handle)-+
+[HTTP Request tool] --(tools handle)--+
 ```
 
-Each top-level folder appears as an option in the **Master Skill** node's folder dropdown.
-
-### Scanning Skill Folders
-
-The Master Skill editor includes a **folder scanner** that discovers all skills within a selected folder. When you select a folder or enter a custom path:
-
-1. The backend recursively scans for all `SKILL.md` files in that directory
-2. Returns each skill's name, description, and metadata from the YAML frontmatter
-3. Skills appear in the Master Skill's left panel for enabling/disabling
-
-You can also type a custom folder path to scan skills from any directory on disk.
-
----
-
-## Combining Multiple Skills
-
-Multiple skills can be connected to a single Chat Agent:
-
-```
-[WhatsApp Skill] --+
-[Maps Skill] ------+---> [Chat Agent] --> [Output]
-[HTTP Skill] ------+
-```
-
-When multiple skills are connected:
-- All skill instructions are combined in the system prompt
-- All allowed tools from all skills become available
-- The agent can use capabilities from any connected skill
-
-### Example Multi-Skill Workflow
-
-```
-User: "Send John my current location on WhatsApp"
-Agent: [Uses Maps skill to get location]
-       [Uses WhatsApp skill to send location message]
-       "I've sent your current location to John on WhatsApp."
-```
+<Warning>
+Skills describe capabilities, but the corresponding Tool nodes must be connected to the agent's tools handle for the agent to actually perform those actions.
+</Warning>
 
 ---
 
 ## Tips
 
 <Tip>
-Connect only the skills you need. Too many skills can confuse the agent.
+Enable only the skills you need. Too many skills can dilute the agent's focus and grow the system prompt.
 </Tip>
 
 <Tip>
-Use **Custom Skills** to create domain-specific assistants for your use case.
+Use custom skills to create domain-specific assistants tailored to your use case.
 </Tip>
 
 <Tip>
 Skill instructions should be clear and specific about when to use each capability.
 </Tip>
-
-<Warning>
-Skills require corresponding Tool nodes to be connected for their allowed-tools to work.
-</Warning>
 
 ---
 
@@ -481,13 +227,13 @@ Skills require corresponding Tool nodes to be connected for their allowed-tools 
 
 <CardGroup cols={2}>
   <Card title="AI Agents" icon="robot" href="/nodes/ai-agent">
-    Connect skills to Chat Agent
+    Connect the Master Skill node to an agent
   </Card>
   <Card title="AI Tools" icon="screwdriver-wrench" href="/nodes/tools">
-    Tool nodes that skills can use
+    Tool nodes that skills reference in allowed-tools
   </Card>
   <Card title="AI Models" icon="brain" href="/nodes/ai-models">
-    AI providers for Chat Agent
+    LLM providers for AI Agent and Chat Agent
   </Card>
   <Card title="WhatsApp" icon="message" href="/nodes/whatsapp">
     WhatsApp messaging nodes

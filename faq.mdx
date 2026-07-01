@@ -20,8 +20,8 @@ Common questions and troubleshooting for MachinaOs.
 
   <Accordion title="What's the difference between MachinaOs and n8n?">
     MachinaOs is inspired by n8n's node-based approach but focuses on:
-    - Deep AI integration (OpenAI, Claude, Gemini with memory)
-    - WhatsApp automation
+    - Deep AI integration (11 LLM providers with memory, tools, and skills)
+    - WhatsApp, Telegram, and Twitter/X automation
     - Android device control
     - Real-time WebSocket communication
 
@@ -49,16 +49,17 @@ Common questions and troubleshooting for MachinaOs.
   </Accordion>
 
   <Accordion title="Can I run MachinaOs on Windows?">
-    Yes, using Docker Desktop for Windows or WSL2. Native development is also supported with Node.js and Python installed.
+    Yes. MachinaOs runs natively on Windows with Node.js 22+ and Python 3.12+ installed. macOS, Linux, WSL2, and Git Bash are also supported. All launch scripts are cross-platform.
   </Accordion>
 
   <Accordion title="How do I update MachinaOs?">
     ```bash
     cd MachinaOs
     git pull
-    docker-compose down
-    docker-compose up --build -d
+    npx machina clean
+    npx machina start
     ```
+    `machina start` auto-installs any new dependencies before launching.
   </Accordion>
 
   <Accordion title="Port 3000 is already in use">
@@ -66,7 +67,7 @@ Common questions and troubleshooting for MachinaOs.
     ```
     VITE_CLIENT_PORT=3001
     ```
-    Then restart the services.
+    Then restart the services. Default ports: client 3000, backend 3010, Node.js executor 3020, WhatsApp 9400, Temporal gRPC 7233 + UI 8080, Redis 6379.
   </Accordion>
 </AccordionGroup>
 
@@ -100,8 +101,9 @@ Common questions and troubleshooting for MachinaOs.
   <Accordion title="How do I debug a workflow?">
     1. Use the **Run** button on individual nodes to test them
     2. Check the output panel for node results
-    3. Add Python Executor nodes with `print()` statements
-    4. Check backend logs: `docker-compose logs -f backend`
+    3. Use the Console tab in the bottom panel to view node execution logs
+    4. Add Python Executor nodes with `print()` statements
+    5. Check the backend Terminal tab or the server logs for errors
   </Accordion>
 </AccordionGroup>
 
@@ -109,12 +111,15 @@ Common questions and troubleshooting for MachinaOs.
 
 <AccordionGroup>
   <Accordion title="Where do I add my API keys?">
-    Click the **key icon** in the toolbar to open the Credentials panel. Add keys for:
+    Click the **key icon** in the toolbar to open the Credentials panel. MachinaOs supports 11 LLM providers plus service credentials, including:
     - OpenAI
     - Anthropic (Claude)
     - Google AI (Gemini)
-    - Google Maps
-    - Android Remote
+    - OpenRouter, Groq, Cerebras, DeepSeek, Kimi (Moonshot), Mistral
+    - Ollama and LM Studio (local servers — enter the server URL, no cloud key needed)
+    - Google Workspace, Google Maps, Twitter/X, Telegram, WhatsApp, and other services
+
+    Ollama and LM Studio point at a local server URL (for example `http://localhost:11434/v1`) instead of a cloud API key.
   </Accordion>
 
   <Accordion title="Are my API keys secure?">
@@ -126,17 +131,20 @@ Common questions and troubleshooting for MachinaOs.
   </Accordion>
 
   <Accordion title="How does conversation memory work?">
-    The Simple Memory node stores messages in SQLite by session ID. Connect it to an AI Agent's memory handle (diamond shape) to enable multi-turn conversations.
+    The Simple Memory node stores conversation history as editable markdown, keyed by session ID. Connect it to an AI Agent's memory handle to enable multi-turn conversations. It keeps a rolling window of recent exchanges and can optionally archive older messages to a vector store for long-term semantic retrieval.
   </Accordion>
 
   <Accordion title="Which AI model should I use?">
     | Use Case | Recommended |
     |----------|-------------|
-    | General chat | GPT-4o, Claude 3.5 Sonnet |
-    | Complex reasoning | Claude 3 Opus, GPT-4 Turbo |
-    | Fast responses | GPT-3.5 Turbo, Claude Haiku |
-    | Long context | Gemini 1.5 Pro |
-    | Cost-effective | GPT-3.5 Turbo |
+    | General chat | GPT-5.2, Claude Sonnet 4.6, Gemini 3.5 Flash |
+    | Complex reasoning | Claude Opus 4.8, GPT-5.5, o3 |
+    | Fast responses | Claude Haiku 4.5, Gemini 3.5 Flash, Groq (Llama 3.3-70b) |
+    | Long context | Claude Opus 4.8 (1M), GPT-5.5 (1M+), Gemini 3.5 Flash (1M) |
+    | Cost-effective | Gemini 3.5 Flash, DeepSeek V4 Flash, Groq / Cerebras |
+    | Local / private | Ollama or LM Studio (whatever model you have loaded) |
+
+    Model availability changes over time — the model dropdown on each AI Model node always reflects the current supported list.
   </Accordion>
 </AccordionGroup>
 
@@ -235,34 +243,35 @@ Common questions and troubleshooting for MachinaOs.
 ## Deployment
 
 <AccordionGroup>
-  <Accordion title="Can I deploy without Docker?">
-    Yes, but it's more complex:
-    1. Install Node.js 18+ and Python 3.12+
-    2. Install dependencies: `npm install` and `pip install -r requirements.txt`
-    3. Build frontend: `npm run build`
-    4. Run backend: `uvicorn main:app`
-    5. Serve frontend with nginx
+  <Accordion title="What's the recommended way to deploy to the cloud?">
+    The current path is the built-in `machina deploy` CLI, which provisions a login-gated VM and installs MachinaOs automatically:
+    ```bash
+    npx machina deploy up --provider gcp --owner-email you@example.com
+    npx machina deploy status
+    npx machina deploy destroy
+    ```
+    This uses your cloud CLI plus Terraform to stand up a single-port server running `machina serve` under systemd, with authentication enabled and an owner credential generated at deploy time. See [Production Deployment](/deployment/production) for details. Docker Compose remains available as a legacy option (see [Docker Deployment](/deployment/docker)).
+  </Accordion>
 
-    Docker is recommended for easier deployment.
+  <Accordion title="Can I run it manually without the CLI?">
+    Yes. The requirements are Node.js 22+ and Python 3.12+. The backend uses `uv` for Python dependencies (not pip). For local development, the simplest path is:
+    ```bash
+    npx machina start   # or: npx machina dev
+    ```
+    `machina start` frees ports, auto-installs dependencies (`uv sync` for Python, `npm` for the frontend and Node executor), and launches everything. Environment variables bootstrap from `.env.template`.
   </Accordion>
 
   <Accordion title="How much does hosting cost?">
-    MachinaOs can run on a small VPS:
-    - DigitalOcean: ~$6/month (1GB RAM)
-    - AWS EC2: ~$10/month (t3.micro)
-    - Self-hosted: Hardware cost only
+    MachinaOs can run on a small VM:
+    - GCP e2-micro / e2-small: low single-digit dollars per month
+    - AWS EC2 t3.micro / small: ~$10/month
+    - Self-hosted: hardware cost only
 
     Plus costs for AI API calls and domain/SSL.
   </Accordion>
 
-  <Accordion title="How do I backup my data?">
-    ```bash
-    # Backup SQLite database
-    docker cp machinaos-backend-1:/app/data ./backup/
-
-    # Backup WhatsApp session
-    docker cp machinaos-whatsapp-1:/app/data ./backup/whatsapp/
-    ```
+  <Accordion title="Where is my data stored?">
+    MachinaOs keeps its state under the data directory (`~/.machina/` by default): the SQLite databases (`workflow.db`, `credentials.db`, `temporal.db`), per-workflow workspaces, and the WhatsApp session. To back up, copy that directory while the server is stopped. API keys and OAuth tokens live encrypted in `credentials.db`.
   </Accordion>
 </AccordionGroup>
 
@@ -271,29 +280,29 @@ Common questions and troubleshooting for MachinaOs.
 <AccordionGroup>
   <Accordion title="Frontend shows blank page">
     - Check browser console for errors
-    - Verify frontend container is running
+    - Verify the frontend and backend are running
     - Clear browser cache
     - Check if ports are blocked by firewall
   </Accordion>
 
   <Accordion title="WebSocket connection fails">
-    - Verify backend is running
-    - Check nginx WebSocket proxy configuration
-    - Ensure no firewall blocks WebSocket (port 3010)
-    - Check CORS settings in .env
+    - Verify the backend is running (port 3010)
+    - If behind a reverse proxy, check the WebSocket proxy configuration
+    - Ensure no firewall blocks WebSocket traffic
+    - Check CORS settings in `.env`
   </Accordion>
 
   <Accordion title="High memory usage">
-    - Restart containers: `docker-compose restart`
+    - Restart the services: `npx machina stop` then `npx machina start`
     - Check for runaway workflows
-    - Limit conversation memory window size
+    - Limit the conversation memory window size
     - Increase server RAM if needed
   </Accordion>
 
   <Accordion title="Database locked error">
     SQLite doesn't handle concurrent writes well. If you see "database is locked":
-    - Restart backend container
-    - Consider migrating to PostgreSQL for production
+    - Restart the backend (`npx machina stop` then `npx machina start`)
+    - On production, enable Redis (`REDIS_ENABLED=true`) so execution state uses Redis instead of SQLite
   </Accordion>
 </AccordionGroup>
 

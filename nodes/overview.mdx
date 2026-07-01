@@ -9,31 +9,35 @@ MachinaOs uses a visual node-based system for building workflows. Each node perf
 
 ## Node Categories
 
-| Category | Count | Description |
-|----------|-------|-------------|
-| [AI Chat Models](/nodes/ai-models) | 9 | OpenAI, Anthropic, Gemini, OpenRouter, Groq, Cerebras, DeepSeek, Kimi, Mistral |
-| [AI Agents and Memory](/nodes/ai-agent) | 3 | AI Agent, Chat Agent (Zeenie), Simple Memory |
-| Specialized Agents | 15 | Android, Coding, Web, Task, Social, Travel, Tool, Productivity, Payments, Consumer, Autonomous, Orchestrator, AI Employee, RLM, Claude Code |
-| [AI Skills](/nodes/skills) | 1 | Master Skill aggregator (49 built-in skills) |
-| [AI Tools](/nodes/tools) | 4 | Calculator, Time, DuckDuckGo, Task Manager |
-| Search | 3 | Brave, Serper, Perplexity (dual-purpose) |
-| Google Workspace | 7 | Gmail, Gmail Receive, Calendar, Drive, Sheets, Tasks, Contacts |
-| [WhatsApp](/nodes/whatsapp) | 3 | Send, Receive, DB query (dual-purpose) |
-| Twitter/X | 4 | Send, Search, User, Receive (dual-purpose) |
-| Telegram | 2 | Send, Receive |
-| Social (unified) | 2 | socialReceive, socialSend |
-| [Android](/nodes/android) | 16 | Device control and monitoring |
-| Location | 3 | Google Maps (create, geocode, nearby) |
-| Code Executors | 3 | Python, JavaScript, TypeScript (dual-purpose) |
-| [Webhooks](/nodes/webhooks) | 6 | HTTP, webhook trigger/response, chat trigger, console, team monitor |
-| Proxy | 3 | Residential proxy request, config, status |
-| [Documents](/nodes/documents) | 6 | RAG pipeline: scrape, parse, embed, store |
-| Web Scraping | 2 | Apify actor, Crawlee scraper |
-| Chat | 2 | Chat send, chat history |
-| [Schedulers](/nodes/schedulers) | 2 | Timer, cron scheduler |
-| Workflow triggers | 2 | Start, task trigger |
+The node palette groups plugins by category. The exact node count grows as new plugins ship, so use the palette in the app for the live list.
 
-**Total: 96 nodes**
+| Category | Description |
+|----------|-------------|
+| [AI Chat Models](/nodes/ai-models) | OpenAI, Anthropic, Gemini, OpenRouter, Groq, Cerebras, DeepSeek, Kimi, Mistral, Ollama, LM Studio |
+| [AI Agents and Memory](/nodes/ai-agent) | AI Agent, Chat Agent (Zeenie), Simple Memory |
+| Specialized Agents | Android, Coding, Web, Task, Social, Travel, Tool, Productivity, Payments, Consumer, Autonomous, Orchestrator, AI Employee, RLM, Claude Code, Codex |
+| [AI Skills](/nodes/skills) | Master Skill aggregator (built-in skill library) |
+| [AI Tools](/nodes/tools) | Calculator, Time, DuckDuckGo, Task Manager, Write Todos |
+| Search | Brave, Serper, Perplexity (dual-purpose) |
+| Google Workspace | Gmail, Gmail Receive, Calendar, Drive, Sheets, Tasks, Contacts |
+| [WhatsApp](/nodes/whatsapp) | Send, Receive, DB query (dual-purpose) |
+| Twitter/X | Send, Search, User, Receive (dual-purpose) |
+| Telegram | Send, Receive |
+| Social (unified) | socialReceive, socialSend |
+| Email | Send, Read, Receive (IMAP/SMTP, dual-purpose) |
+| Stripe | Stripe action (CLI pass-through), Stripe receive (webhook trigger) |
+| [Android](/nodes/android) | Device control and monitoring (16 service nodes) |
+| Location | Google Maps (create, geocode, nearby) |
+| Code Executors | Python, Monty (sandboxed Python), JavaScript, TypeScript (dual-purpose) |
+| Filesystem and Shell | File read, file modify, shell (Nushell), fs search, process manager |
+| Browser | Interactive browser automation (dual-purpose) |
+| [Webhooks and Utilities](/nodes/webhooks) | HTTP, webhook trigger/response, chat trigger, console, team monitor |
+| Proxy | Residential proxy request, config, status |
+| [Documents](/nodes/documents) | RAG pipeline: scrape, parse, embed, store |
+| Web Scraping | Apify actor, Crawlee scraper |
+| Chat | Chat send, chat history |
+| [Schedulers](/nodes/schedulers) | Timer, cron scheduler |
+| Workflow triggers | Start, task trigger |
 
 ## Node Shapes
 
@@ -178,13 +182,13 @@ Config nodes (Memory, Models) connect to diamond handles, not main inputs.
 
 <CardGroup cols={2}>
   <Card title="AI Models" icon="brain" href="/nodes/ai-models">
-    10 providers: OpenAI, Claude, Gemini, OpenRouter, Groq, Cerebras, xAI, DeepSeek, Kimi, Mistral
+    11 providers: OpenAI, Claude, Gemini, OpenRouter, Groq, Cerebras, DeepSeek, Kimi, Mistral, Ollama, LM Studio
   </Card>
   <Card title="AI Agents" icon="robot" href="/nodes/ai-agent">
-    AI Agent, Chat Agent (Zeenie), and 15 specialized agents
+    AI Agent, Chat Agent (Zeenie), and 16 specialized agents
   </Card>
   <Card title="AI Skills" icon="wand-magic-sparkles" href="/nodes/skills">
-    Master Skill aggregator with 49 built-in skills
+    Master Skill aggregator with a built-in skill library
   </Card>
   <Card title="AI Tools" icon="screwdriver-wrench" href="/nodes/tools">
     Calculator, time, search, Android toolkit
@@ -193,7 +197,7 @@ Config nodes (Memory, Models) connect to diamond handles, not main inputs.
     Send, receive, and query messages
   </Card>
   <Card title="Android" icon="mobile" href="/nodes/android">
-    17 device control nodes
+    16 device control nodes
   </Card>
   <Card title="Documents" icon="file-lines" href="/nodes/documents">
     RAG pipeline: scrape, parse, embed, store

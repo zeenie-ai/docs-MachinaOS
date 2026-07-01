@@ -11,66 +11,66 @@ Create an intelligent AI agent that remembers conversation history and can use t
 
 A chatbot that:
 - Maintains conversation context across messages
-- Uses an AI model (OpenAI, Claude, or Gemini)
+- Uses an AI model (OpenAI, Claude, Gemini, and more)
 - Responds via webhook
 
 ## Prerequisites
 
 - MachinaOs running locally
-- An AI provider API key (OpenAI, Anthropic, or Google)
+- An AI provider API key (OpenAI, Anthropic, Google, or any of the 11 supported providers)
 
 ## Step 1: Add the AI Agent
 
 1. Drag **AI Agent** from the AI Agents category
 2. This is the core of your intelligent assistant
 
-The AI Agent node has multiple input handles:
-- **Main Input** (left) - Receives the user prompt
-- **Memory Input** (bottom-left diamond) - Connects to memory nodes
-- **Model Input** (top) - Optional model override
+The AI Agent node has several handles:
+- **Main Input** (`input-main`, left) - Receives the user prompt
+- **Memory** (`input-memory`, left diamond) - Connects to a Simple Memory node
+- **Skill** (`input-skill`, bottom diamond) - Connects skill nodes
+- **Tools** (`input-tools`, bottom diamond) - Connects tool nodes
+- **Output** (`output-main`, right) - The agent's response
 
-## Step 2: Connect a Chat Model
+## Step 2: Choose the Provider and Model
 
-1. Drag **OpenAI Chat Model** (or Claude/Gemini) onto the canvas
-2. Connect it to the AI Agent's model input (top handle)
-3. Configure the model:
+The AI Agent picks its own provider and model directly in its parameters. There is no separate model handle to wire up.
+
+1. Click the AI Agent to open its parameter panel
+2. Set the **Provider** and **Model**:
 
 ```
-Model: gpt-4o
+Provider: anthropic
+Model: claude-opus-4-8
 Temperature: 0.7
-Max Tokens: 1000
 ```
+
+You can pick any of the 11 providers: OpenAI, Anthropic, Gemini, OpenRouter, Groq, Cerebras, DeepSeek, Kimi, Mistral, Ollama, or LM Studio. Model options update automatically based on the provider you choose (for example, OpenAI offers `gpt-5.5`, Anthropic offers `claude-opus-4-8` / `claude-sonnet-4-6`, Gemini offers `gemini-3.5-flash`).
 
 <Tip>
-You can use any AI provider. Claude excels at reasoning, Gemini handles multimodal input.
+Claude excels at reasoning, Gemini handles multimodal input, and Ollama / LM Studio let you run local models on your own machine. The standalone **Chat Model** nodes (e.g. OpenAI Chat Model, Claude Chat Model) are for using a model on its own outside an agent -- you do not need one to power the AI Agent.
 </Tip>
 
 ## Step 3: Add Conversation Memory
 
-1. Drag **Simple Memory** from AI Agents
-2. Connect it to the AI Agent's memory input (bottom-left diamond handle)
+1. Drag **Simple Memory** from the AI Tools category
+2. Connect its output to the AI Agent's **Memory** input (`input-memory`, the left diamond handle)
 3. Configure:
 
 ```
 Session ID: default
-Memory Type: Buffer
+Window Size: 10
 ```
 
-### Memory Types
-
-| Type | Description |
-|------|-------------|
-| Buffer | Keeps all messages in the session |
-| Window | Keeps only the last N messages |
+Simple Memory keeps a rolling window of the most recent message pairs (set by **Window Size**). The conversation is stored as editable markdown you can view and change right in the parameter panel.
 
 <Info>
-Memory is stored in SQLite and persists across server restarts.
+Enable **Long-Term Memory** on the Simple Memory node to archive older messages into a vector store for semantic recall beyond the recent window.
 </Info>
 
 ## Step 4: Add a Webhook Trigger
 
-1. Drag **Webhook Trigger** from Utilities
-2. Connect its output to the AI Agent's main input
+1. Drag **Webhook Trigger** from the Triggers category
+2. Connect its output to the AI Agent's main input (`input-main`)
 3. Configure:
 
 ```
@@ -95,16 +95,16 @@ Content Type: application/json
 ```
 [Webhook Trigger] --> [AI Agent] --> [Webhook Response]
                          ^
+                         | input-memory
                          |
                [Simple Memory]
-                         ^
-                         |
-               [OpenAI Chat Model]
 ```
+
+The AI Agent's provider and model are set in its own parameters (Step 2), so there is no separate model node to connect.
 
 ## Step 6: Configure the Agent Prompt
 
-Click on the AI Agent and set the system prompt:
+Click on the AI Agent and set the **System Message** field:
 
 ```
 You are a helpful assistant. You remember our conversation history.
@@ -140,16 +140,15 @@ Session ID: {{webhookTrigger.body.user_id}}
 
 This creates separate memory for each user.
 
-## Advanced: Window Memory
+## Advanced: Window Size
 
-For long conversations, use Window mode to limit memory:
+For long conversations, adjust **Window Size** to control how much history the agent sees:
 
 ```
-Memory Type: Window
 Window Size: 10
 ```
 
-This keeps only the last 10 message exchanges.
+This keeps only the last 10 message exchanges in short-term memory. Turn on **Long-Term Memory** if you also want older messages retrievable via semantic search.
 
 ## Troubleshooting
 

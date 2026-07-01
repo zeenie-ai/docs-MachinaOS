@@ -28,10 +28,17 @@ Tool nodes provide capabilities that AI Agents can invoke during reasoning. Each
 | Calculator | Math operations | Calculations, arithmetic |
 | Current Time | Date/time with timezone | Scheduling, time-based logic |
 | Timer | Set delays and timers | Rate limiting, scheduled pauses |
-| Web Search | Search the internet | Current information, research |
+| Task Manager | Track delegated sub-agent tasks | Check status/results of child agents |
+| Write Todos | Structured task-list planning | Multi-step task organization |
+| Agent Builder | Grow the canvas at runtime | Add tools/skills/teammates mid-run |
+| DuckDuckGo Search | Free web search (no API key) | Current information, research |
+| Brave / Serper / Perplexity | API-key web search | Higher-quality search, AI answers |
 | Android Toolkit | Android device control | Device automation |
-| AI Agent | Delegate to child agent | Complex sub-tasks (fire-and-forget) |
-| Specialized Agents | Domain-specific delegation | Android, coding, web, task, social |
+| Agent Delegation | Delegate to a child agent | Complex sub-tasks |
+
+<Info>
+Many nodes are **dual-purpose** - they work as standalone workflow nodes AND as AI Agent tools. Search nodes (Brave, Serper, Perplexity), the code executors (Python, Monty, JavaScript, TypeScript), WhatsApp, Telegram, Google Workspace, email, and browser nodes all fill the same tool schema when connected to an agent's `input-tools` handle. See [Documents](/nodes/documents), [WhatsApp](/nodes/whatsapp), and [AI Agents](/nodes/ai-agent) for those.
+</Info>
 
 ---
 
@@ -112,12 +119,9 @@ Gets the current date and time with timezone support.
 
 ```json
 {
-  "datetime": "2025-01-30T14:30:00-05:00",
-  "date": "2025-01-30",
-  "time": "14:30:00",
+  "iso": "2026-01-30T14:30:00-05:00",
   "timezone": "America/New_York",
-  "day_of_week": "Thursday",
-  "unix_timestamp": 1738262000
+  "unix": 1769801400
 }
 ```
 
@@ -125,7 +129,7 @@ Gets the current date and time with timezone support.
 
 ```
 User: "What time is it in Tokyo?"
-Agent: [Calls currentTime with timezone="Asia/Tokyo"]
+Agent: [Calls get_current_time with timezone="Asia/Tokyo"]
        "It's currently 4:30 AM on Friday in Tokyo."
 ```
 
@@ -183,70 +187,132 @@ The Timer node appears in both the **Schedulers** section (as a workflow node) a
 
 ---
 
-## Web Search Tool
+## Task Manager Tool
 
-Searches the internet using DuckDuckGo (free) or Serper API (requires API key).
-
-### Parameters
-
-<ParamField path="toolName" type="string" default="webSearch">
-  Tool identifier shown to the LLM
-</ParamField>
-
-<ParamField path="toolDescription" type="string">
-  Description of the tool's capabilities
-</ParamField>
-
-<ParamField path="provider" type="select" default="duckduckgo">
-  Search provider: "duckduckgo" (free) or "serper" (API key required)
-</ParamField>
-
-<ParamField path="maxResults" type="number" default="5">
-  Maximum number of search results to return
-</ParamField>
+Tracks tasks delegated to child sub-agents. When a parent agent delegates work to a connected agent (fire-and-forget), it uses this tool to check on progress and results.
 
 ### Schema (LLM View)
 
 ```json
 {
-  "query": "string (search query)",
-  "max_results": "number (optional, 1-10)"
-}
-```
-
-### Output
-
-```json
-{
-  "results": [
-    {
-      "title": "Result Title",
-      "url": "https://example.com/page",
-      "snippet": "Brief description of the page..."
-    }
-  ],
-  "query": "original search query"
+  "action": "create | list | complete | delete | update",
+  "task_id": "string (optional)",
+  "title": "string (optional)",
+  "description": "string (optional)",
+  "status": "string (optional)"
 }
 ```
 
 ### Example Interaction
 
 ```
+User: "Did the coding agent finish that JSON parser?"
+Agent: [Calls task_manager with action="list"]
+       "The coding agent completed the task - here's the function it wrote..."
+```
+
+---
+
+## Write Todos Tool
+
+Structured task-list planning for complex multi-step operations. The agent maintains a checklist of pending / in-progress / completed items, updating it as it works. This helps the agent stay organized and lets you watch progress in real time.
+
+### Schema (LLM View)
+
+```json
+{
+  "todos": [
+    { "content": "string (task description)", "status": "pending | in_progress | completed" }
+  ]
+}
+```
+
+### Editable Current Todos Panel
+
+When you select a Write Todos node, its parameter panel shows the LIVE todo list (shared by all Write Todos nodes in the same workflow). You can add, remove, edit text, or click an item to cycle its status - and the agent sees your edits on its next turn.
+
+### Example Interaction
+
+```
+User: "Build a login form with validation and tests"
+Agent: [Calls write_todos to plan: 1) create form, 2) add validation, 3) write tests]
+       [Marks each item in_progress then completed as it works]
+```
+
+<Tip>
+The agent only reaches for this tool on genuinely multi-step work (3+ steps). Trivial requests are handled directly without a todo list.
+</Tip>
+
+---
+
+## Agent Builder Tool
+
+Lets an agent grow its own toolset at runtime by mutating the canvas. The LLM sees a single `agentBuilder` tool with an `operation` selector.
+
+| Operation | What it does |
+|-----------|--------------|
+| inspect_canvas | Read-only snapshot of nodes, edges, and what's wired to the calling agent |
+| add_tool | Spawn a tool node and wire it into the caller's tools handle |
+| add_skill | Toggle a skill on the caller's Master Skill (creating one if needed) |
+| add_subagent | Spawn a delegate agent and wire it to a team-lead's teammates handle |
+
+<Info>
+Tools added mid-run become callable on the agent's **next** turn, not the current one - the agent loop binds tools at the start of each turn. Each operation's summary ends with "Available on your next turn" so the agent knows to wait.
+</Info>
+
+---
+
+## Web Search Tools
+
+MachinaOs ships one free web-search tool plus three dual-purpose search nodes that also work as standalone workflow nodes.
+
+### DuckDuckGo Search
+
+Free web search - no API key required. Exposed to the agent as the `web_search` tool.
+
+<ParamField path="query" type="string" required>
+  The search query
+</ParamField>
+
+<ParamField path="max_results" type="number">
+  Maximum number of results to return
+</ParamField>
+
+```json
+{
+  "results": [
+    { "title": "Result Title", "url": "https://example.com/page", "snippet": "Brief description..." }
+  ]
+}
+```
+
+### Brave / Serper / Perplexity (dual-purpose, API key required)
+
+These are dual-purpose nodes - they run as normal workflow search nodes AND as AI Agent tools when connected to the tools handle.
+
+| Node | Tool | Backend | Notes |
+|------|------|---------|-------|
+| Brave Search | `brave_search` | Brave Search API | Web results with titles, snippets, URLs |
+| Serper Search | `serper_search` | Google via Serper API | Web / news / images / places search types + knowledge graph |
+| Perplexity Search | `perplexity_search` | Perplexity Sonar AI | AI-generated answer with inline citations and source URLs |
+
+### Provider Comparison
+
+| Feature | DuckDuckGo | Brave / Serper / Perplexity |
+|---------|------------|-----------------------------|
+| Cost | Free | Paid (API key) |
+| Setup | None | API key in Credentials |
+| Result Quality | Good | Excellent |
+
+### Example Interaction
+
+```
 User: "What are the latest developments in quantum computing?"
-Agent: [Calls webSearch with query="quantum computing news 2025"]
+Agent: [Calls web_search with query="quantum computing news 2026"]
        "Here are the latest developments in quantum computing:
         1. IBM announced a new 1000-qubit processor...
         2. Google achieved quantum error correction milestone..."
 ```
-
-### Provider Comparison
-
-| Feature | DuckDuckGo | Serper |
-|---------|------------|--------|
-| Cost | Free | Paid (API key) |
-| Rate Limits | Moderate | High |
-| Result Quality | Good | Excellent |
-| Setup | None | API key required |
 
 ---
 
@@ -353,7 +419,7 @@ Tool outputs are available as template variables:
 
 ```
 {{calculatorTool.result}}
-{{webSearchTool.results}}
+{{duckduckgoSearch.results}}
 {{androidTool.output}}
 ```
 
@@ -361,14 +427,14 @@ Tool outputs are available as template variables:
 
 ## Agent Delegation Tool
 
-AI Agents and specialized agents can be connected as tools to parent agents, enabling hierarchical task delegation.
+AI Agents and specialized agents can be connected as tools to parent agents, enabling hierarchical task delegation. MachinaOs ships 16 specialized agents (Android, Coding, Web, Task, Social, Travel, Tool, Productivity, Payments, Consumer, Autonomous, Orchestrator, AI Employee) plus the RLM, Claude Code, and Codex agents.
 
 ### How It Works
 
 1. Connect any agent to a parent agent's `input-tools` handle
 2. Parent calls `delegate_to_<agent_type>(task, context)`
-3. Child spawns as background task (fire-and-forget)
-4. Parent continues immediately without waiting
+3. The child agent runs with its own connected tools, skills, and memory
+4. Team-lead agents (Orchestrator, AI Employee) delegate through a dedicated `input-teammates` handle
 
 ### Schema
 
@@ -397,13 +463,15 @@ Use agent delegation for complex sub-tasks that don't need immediate results.
 
 ## Creating Custom Tools
 
-To add custom tools, see the [AI Tool Node Guide](https://github.com/trohitg/MachinaOS/blob/main/docs-internal/ai_tool_node_creation.md) in the repository.
+Custom tools are backend plugins. Each tool is a single self-contained folder under `server/nodes/tool/<name>/` rooted at `__init__.py` - a `ToolNode` subclass whose Pydantic `Params` model drives the LLM-visible schema. The plugin auto-registers on import; no frontend edits are needed.
 
 Key steps:
-1. Define node in `client/src/nodeDefinitions/toolNodes.ts`
-2. Add schema in `server/services/ai.py`
-3. Add handler in `server/services/handlers/tools.py`
-4. Update `TOOL_NODE_TYPES` array
+1. Create `server/nodes/tool/<name>/__init__.py` with a `ToolNode` subclass
+2. Define a Pydantic `Params` model (its fields become the tool's LLM schema)
+3. Implement the operation with an `@Operation` method
+4. Set `component_kind = "tool"` and add `group = ("tool", "ai")`
+
+See the Nodes Cookbook (`server/nodes/README.md`) and the Node Creation Guide in the repository for the full recipe.
 
 ---
 
@@ -441,7 +509,7 @@ Tool nodes execute when the AI Agent calls them, not when the workflow runs. The
     Skills that use tools
   </Card>
   <Card title="Android Nodes" icon="mobile" href="/nodes/android">
-    17 Android service nodes
+    16 Android service nodes
   </Card>
   <Card title="Webhooks" icon="webhook" href="/nodes/webhooks">
     HTTP Request node

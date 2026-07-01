@@ -5,19 +5,19 @@ description: Build intelligent agents with conversation memory, skills, and tool
 
 # AI Agents & Memory
 
-MachinaOs provides two types of AI agents for different use cases, plus a memory node for conversation context.
+MachinaOs provides two general-purpose AI agents plus a set of specialized, pre-configured agents, all sharing a memory node for conversation context.
 
 ## Agent Types
 
 | Agent | Purpose | Special Features |
 |-------|---------|-----------------|
-| AI Agent | Complex reasoning with tool calling | LangGraph execution, iterative reasoning |
-| Chat Agent | Conversational AI with skills | Skill-driven behavior, multi-turn chat |
+| AI Agent | Complex reasoning with tool calling | Iterative agent loop, tool calling, delegation |
+| Chat Agent (Zeenie) | Conversational AI with skills | Skill-driven behavior, multi-turn chat |
 | Simple Memory | Conversation history storage | Markdown format, long-term vector storage |
 
-### 15 Specialized Agents
+### Specialized Agents
 
-Pre-configured agents for specific domains. Thirteen route to `handle_chat_agent` (shared LangGraph loop). `rlm_agent` and `claude_code_agent` have dedicated handlers.
+Pre-configured agents for specific domains. Each is a self-contained plugin that inherits full AI Agent behavior (provider, model, prompt, system message, thinking) while being tailored for a domain. Most run the shared agent loop; `rlm_agent`, `claude_code_agent`, and `codex_agent` have dedicated engines.
 
 | Agent | Description | Theme |
 |-------|-------------|-------|
@@ -35,7 +35,8 @@ Pre-configured agents for specific domains. Thirteen route to `handle_chat_agent
 | Orchestrator Agent | Team lead for multi-agent coordination | Cyan |
 | AI Employee | Team lead (alternate branding) | Purple |
 | RLM Agent | Recursive Language Model via REPL (`llm_query`, `rlm_query`, `FINAL`) | Orange |
-| Claude Code Agent | Claude Code SDK integration | Purple |
+| Claude Code Agent | Claude Code CLI integration (interactive mode) | Purple |
+| Codex Agent | Codex CLI integration | Purple |
 
 ### Agent Teams Pattern
 
@@ -52,35 +53,39 @@ Pre-configured agents for specific domains. Thirteen route to `handle_chat_agent
     coding_agent)     web_agent)      task_agent)
 ```
 
-Delegation is fire-and-forget: the child spawns as `asyncio.create_task()`, the parent continues working, and the child broadcasts status independently. Results can be retrieved via the auto-injected `check_delegated_tasks` tool or consumed by `taskTrigger` nodes.
+Delegation is fire-and-forget: the child agent spawns as a background task, the parent continues working, and the child broadcasts its status independently. Completion results can be consumed by a `taskTrigger` node connected to the parent's Task handle.
 
 ---
 
 ## AI Agent Node
 
-The AI Agent uses LangGraph for structured execution with tool calling and iterative reasoning.
+The AI Agent runs an iterative agent loop with tool calling and delegation.
 
 ### Input Handles
 
 | Handle | Position | Purpose |
 |--------|----------|---------|
-| Main Input | Left | User prompt/data from upstream nodes |
-| Memory | Bottom-left (diamond) | Connect Simple Memory |
-| Skill | Bottom (diamond) | Connect Master Skill |
-| Tools | Bottom (diamond) | Connect Tool nodes or dual-purpose nodes |
-| Task | Bottom-left (diamond) | Connect taskTrigger for delegation feedback |
+| Main Input (`input-main`) | Left | User prompt/data from upstream nodes |
+| Memory (`input-memory`) | Left (diamond) | Connect Simple Memory |
+| Task (`input-task`) | Left (diamond) | Connect taskTrigger for delegation feedback |
+| Skill (`input-skill`) | Bottom (diamond) | Connect Master Skill |
+| Tools (`input-tools`) | Bottom (diamond) | Connect Tool nodes or dual-purpose nodes |
+
+<Info>
+Team lead agents (Orchestrator Agent, AI Employee) add an extra `input-teammates` handle for delegation.
+</Info>
 
 ### Parameters
 
 <ParamField path="provider" type="select" required>
-  AI provider: openai, anthropic, gemini, openrouter, groq, cerebras, xai, deepseek, kimi, mistral
+  AI provider: openai, anthropic, gemini, openrouter, groq, cerebras, deepseek, kimi, mistral, ollama, lmstudio
 </ParamField>
 
 <ParamField path="model" type="select" required>
   Model to use (options based on provider)
 </ParamField>
 
-<ParamField path="systemPrompt" type="string">
+<ParamField path="system_message" type="string">
   Instructions that define the agent's behavior and personality
 </ParamField>
 
@@ -88,8 +93,8 @@ The AI Agent uses LangGraph for structured execution with tool calling and itera
   The user message. Supports template variables like `{{nodeName.field}}`
 </ParamField>
 
-<ParamField path="maxIterations" type="number" default="5">
-  Maximum reasoning iterations for complex tasks
+<ParamField path="max_iterations" type="number">
+  Optional per-node cap on agent loop steps. When unset, falls back to your Settings recursion limit (default 200).
 </ParamField>
 
 ### Output
@@ -107,7 +112,7 @@ The AI Agent uses LangGraph for structured execution with tool calling and itera
 
 ### Tool Calling
 
-Connect Tool nodes to the **input-tools** handle (bottom-right diamond) to give the agent capabilities:
+Connect Tool nodes to the **input-tools** handle (bottom diamond) to give the agent capabilities:
 
 ```
 [Calculator Tool] --+
@@ -119,7 +124,7 @@ The agent will automatically use tools when needed based on the user's request.
 
 ---
 
-## Chat Agent Node
+## Chat Agent Node (Zeenie)
 
 The Chat Agent is designed for conversational interactions with skill-based behavior extension.
 
@@ -127,22 +132,23 @@ The Chat Agent is designed for conversational interactions with skill-based beha
 
 | Handle | Position | Purpose |
 |--------|----------|---------|
-| Main Input | Left | User message (e.g., from Chat Trigger) |
-| Memory | Bottom-left (diamond) | Connect Simple Memory |
-| Skills | Bottom-right (diamond) | Connect Skill nodes |
-| Tools | Bottom (diamond) | Connect Tool nodes |
+| Main Input (`input-main`) | Left | User message (e.g., from Chat Trigger) |
+| Memory (`input-memory`) | Left (diamond) | Connect Simple Memory |
+| Task (`input-task`) | Left (diamond) | Connect taskTrigger for delegation feedback |
+| Skills (`input-skill`) | Bottom (diamond) | Connect Skill nodes |
+| Tools (`input-tools`) | Bottom (diamond) | Connect Tool nodes |
 
 ### Parameters
 
 <ParamField path="provider" type="select" required>
-  AI provider: openai, anthropic, gemini, openrouter, groq, cerebras
+  AI provider: openai, anthropic, gemini, openrouter, groq, cerebras, deepseek, kimi, mistral, ollama, lmstudio
 </ParamField>
 
 <ParamField path="model" type="select" required>
   Model to use (options based on provider)
 </ParamField>
 
-<ParamField path="systemPrompt" type="string">
+<ParamField path="system_message" type="string">
   Base system instructions (extended by connected skills)
 </ParamField>
 
@@ -177,7 +183,7 @@ Skills provide domain-specific instructions and allowed tools to the Chat Agent.
 {
   "response": "Chat Agent's response",
   "thinking": "Reasoning (if enabled)",
-  "model": "claude-3-5-sonnet",
+  "model": "claude-sonnet-4-6",
   "provider": "anthropic"
 }
 ```
@@ -239,7 +245,7 @@ I don't have access to real-time weather data...
 ### Memory Flow
 
 1. Agent reads `memoryContent` markdown from connected Simple Memory node
-2. Parses markdown to LangChain message format
+2. Parses markdown into message history
 3. (If enabled) Retrieves relevant context from vector store
 4. Executes with conversation history
 5. Appends new messages to markdown
@@ -301,14 +307,14 @@ This creates separate memory for each user.
 
 ## AI Agent vs Chat Agent
 
-| Feature | AI Agent | Chat Agent |
+| Feature | AI Agent | Chat Agent (Zeenie) |
 |---------|----------|------------|
 | Primary Use | Complex reasoning tasks | Conversational interactions |
-| Tool Calling | Yes (LangGraph) | Yes (LangGraph) |
+| Tool Calling | Yes (agent loop) | Yes (agent loop) |
 | Memory Support | Yes | Yes |
 | Skill Support | Yes | Yes |
 | Bottom Handles | Skill, Tools | Skill, Tools |
-| Left Handles | Input, Memory | Input, Memory |
+| Left Handles | Input, Memory, Task | Input, Memory, Task |
 | Best For | Task automation, reasoning | Chat interfaces, multi-turn dialog |
 
 ---
@@ -415,10 +421,10 @@ Long conversations with large window sizes can exceed model context limits. Use 
 
 <CardGroup cols={2}>
   <Card title="AI Models" icon="brain" href="/nodes/ai-models">
-    10 AI providers with thinking modes
+    11 chat model providers with thinking modes
   </Card>
   <Card title="AI Skills" icon="wand-magic-sparkles" href="/nodes/skills">
-    10 skill nodes for Chat Agent
+    Skill nodes for AI and Chat Agents
   </Card>
   <Card title="AI Tools" icon="screwdriver-wrench" href="/nodes/tools">
     Tool nodes for AI agents

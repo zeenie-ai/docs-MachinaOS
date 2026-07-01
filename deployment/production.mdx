@@ -1,13 +1,155 @@
 ---
 title: Production Deployment
-description: Deploy MachinaOs to production with nginx and SSL
+description: Deploy MachinaOs to a cloud VM with one command using machina deploy
 ---
 
 # Production Deployment
 
-Deploy MachinaOs to a production server with Docker, nginx reverse proxy, and SSL.
+The recommended way to run MachinaOs in production is the built-in self-deploy CLI. One command provisions a login-gated MachinaOs VM on a cloud provider, installs the app, and runs it behind the login screen.
 
-## Server Requirements
+```bash
+machina deploy up --provider gcp --owner-email you@example.com
+```
+
+Behind the scenes this runs two stages:
+
+1. **Cloud CLI (auth + context)** - the provider adapter (currently `gcloud`; AWS is a follow-on) verifies your cloud CLI is installed and authenticated, resolves the project/region/zone, checks Application Default Credentials, and enables the required cloud APIs.
+2. **Terraform** - generates fresh secrets and owner credentials, packages your local build, then creates all resources: the VM (always named `machinaos`), firewall rule, artifact bucket, and service account. A cloud-init startup script installs Node.js and uv, installs the package, and runs `machina serve` under systemd on a single public port.
+
+<Info>
+`machina serve` fronts the API, WebSocket, and the built single-page app plus the Node.js sidecar all on one port. No separate frontend container or reverse proxy is required for the standard path.
+</Info>
+
+## Prerequisites
+
+- A cloud account (Google Cloud for the `gcp` provider).
+- The `gcloud` CLI installed and authenticated:
+  ```bash
+  gcloud auth login
+  gcloud auth application-default login
+  gcloud config set project <your-project-id>
+  ```
+- Node.js 22+ and npm on your local machine (used to package the local build via `npm pack`).
+- Terraform is auto-installed by the deploy CLI if it is not already on PATH.
+
+## Deploy
+
+```bash
+machina deploy up --provider gcp --owner-email you@example.com
+```
+
+When it finishes it prints the external IP, the URL, and the owner login credentials. If you did not pass `--owner-password`, a strong password is generated and printed once - save it.
+
+<Warning>
+The generated login password is shown only once at the end of `deploy up`. Copy it immediately; it is not stored where you can read it back later.
+</Warning>
+
+### Common options
+
+<ParamField path="--provider" type="string" default="gcp">
+  Cloud provider. `gcp` today; AWS is a follow-on.
+</ParamField>
+
+<ParamField path="--owner-email" type="string" required>
+  Login email for the owner account (single-owner mode).
+</ParamField>
+
+<ParamField path="--owner-password" type="string">
+  Login password (min 8 chars). Generated and printed once if omitted.
+</ParamField>
+
+<ParamField path="--machine-type" type="string" default="e2-standard-2">
+  VM size.
+</ParamField>
+
+<ParamField path="--port" type="number" default="8080">
+  Public port the app binds and the firewall opens.
+</ParamField>
+
+<ParamField path="--allow-cidr" type="string" default="0.0.0.0/0">
+  Firewall source range. Restrict to your own IP with something like `203.0.113.4/32`.
+</ParamField>
+
+<ParamField path="--region" type="string">
+  Cloud region (provider default if omitted).
+</ParamField>
+
+<ParamField path="--zone" type="string">
+  Cloud zone (provider default if omitted).
+</ParamField>
+
+<ParamField path="--project" type="string">
+  GCP project (defaults to your `gcloud` config).
+</ParamField>
+
+## The Login Gate
+
+The deploy path always provisions a login-gated, single-owner instance:
+
+- `VITE_AUTH_ENABLED=true` and `AUTH_MODE=single`.
+- The owner credential is generated at deploy time and seeded on first boot.
+- Fresh `JWT_SECRET_KEY`, `SECRET_KEY`, and `API_KEY_ENCRYPTION_KEY` are minted per deployment.
+
+<Warning>
+By default the VM is reached over plain HTTP on its IP, so `JWT_COOKIE_SECURE` is set to `false`. Put a domain and TLS terminator in front (see the self-managed section below) and flip `JWT_COOKIE_SECURE=true` once HTTPS is in place.
+</Warning>
+
+## Status and Health
+
+```bash
+machina deploy status
+```
+
+Prints the deployment's URL and polls `/health`. The VM takes a few minutes on first boot to install Node, npm, and build the app.
+
+## Updating
+
+Re-running `deploy up` re-applies Terraform safely (the VM stays named `machinaos`). To ship a new local build, run `machina deploy up` again from an updated checkout.
+
+## Tearing Down
+
+```bash
+machina deploy destroy
+```
+
+This runs `terraform destroy` and clears the local deployment state.
+
+<Info>
+Deployment state lives at `<user-data>/deploy/machinaos/`. It is preserved by `machina clean` - only `machina deploy destroy` removes it, because it tracks live cloud resources.
+</Info>
+
+## Verify
+
+```bash
+# Check health endpoint (URL printed by deploy up / status)
+curl http://<external-ip>:8080/health
+```
+
+## Security Checklist
+
+<Check>
+Owner login credentials are saved somewhere safe (password shown once)
+</Check>
+
+<Check>
+Firewall source range restricted with --allow-cidr where possible
+</Check>
+
+<Check>
+A TLS terminator + domain in front, with JWT_COOKIE_SECURE=true, before exposing publicly
+</Check>
+
+<Check>
+SSH key authentication only on the VM (disable password auth)
+</Check>
+
+---
+
+## Self-Managed Deployment (Legacy)
+
+If you prefer to run MachinaOs on a server you manage yourself with Docker Compose behind nginx and SSL, the following is a reference topology. The `machina deploy` path above is the recommended and maintained approach; the Docker Compose stack is a legacy reference.
+
+### Server Requirements
 
 - Ubuntu 20.04+ or similar Linux
 - 2+ CPU cores
@@ -15,7 +157,7 @@ Deploy MachinaOs to a production server with Docker, nginx reverse proxy, and SS
 - Docker and Docker Compose
 - Domain name (for SSL)
 
-## Deployment Overview
+### Topology
 
 ```
 Internet --> nginx (SSL) --> Docker Containers
@@ -26,7 +168,7 @@ Internet --> nginx (SSL) --> Docker Containers
                    +--> redis (6379)
 ```
 
-## Step 1: Server Setup
+### Server Setup
 
 ```bash
 # Update system
@@ -43,7 +185,7 @@ sudo apt install docker-compose-plugin
 sudo apt install nginx certbot python3-certbot-nginx
 ```
 
-## Step 2: Clone and Configure
+### Clone and Configure
 
 ```bash
 # Clone repository
@@ -51,10 +193,14 @@ cd /opt
 sudo git clone https://github.com/trohitg/MachinaOs.git
 cd MachinaOs
 
-# Create production environment file
-sudo cp .env.example .env.prod
+# Create production environment file from the template
+sudo cp .env.template .env.prod
 sudo nano .env.prod
 ```
+
+<Info>
+Environment files bootstrap from `.env.template` (not `.env.example`). Copy it and override the values you need.
+</Info>
 
 ### Production Environment
 
@@ -90,7 +236,7 @@ DEBUG=false
 Generate secure random strings for SECRET_KEY, JWT_SECRET_KEY, and API_KEY_ENCRYPTION_KEY. Never use default values in production.
 </Warning>
 
-## Step 3: Build and Start
+### Build and Start
 
 ```bash
 # Build production images
@@ -103,7 +249,7 @@ docker-compose -f docker-compose.prod.yml up -d
 docker-compose -f docker-compose.prod.yml ps
 ```
 
-## Step 4: Configure nginx
+### Configure nginx
 
 Create nginx configuration:
 
@@ -182,7 +328,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-## Step 5: SSL Certificate
+### SSL Certificate
 
 ```bash
 # Get SSL certificate from Let's Encrypt
@@ -193,7 +339,7 @@ sudo certbot --nginx -d your-domain.com
 sudo certbot renew --dry-run
 ```
 
-## Step 6: Firewall
+### Firewall
 
 ```bash
 # Allow required ports
@@ -203,22 +349,9 @@ sudo ufw allow 443/tcp  # HTTPS
 sudo ufw enable
 ```
 
-## Verify Deployment
+### Maintenance
 
-```bash
-# Check health endpoint
-curl https://your-domain.com/health
-
-# Check containers
-docker-compose -f docker-compose.prod.yml ps
-
-# View logs
-docker-compose -f docker-compose.prod.yml logs -f
-```
-
-## Maintenance
-
-### Updates
+#### Updates
 
 ```bash
 cd /opt/MachinaOs
@@ -231,7 +364,7 @@ docker-compose -f docker-compose.prod.yml down
 docker-compose -f docker-compose.prod.yml up --build -d
 ```
 
-### Backups
+#### Backups
 
 ```bash
 # Backup database
@@ -241,7 +374,7 @@ docker cp machinaos-backend-1:/app/data/workflow.db ./backup/
 docker cp machinaos-whatsapp-1:/app/data ./backup/whatsapp/
 ```
 
-### Monitoring
+#### Monitoring
 
 ```bash
 # Check resource usage
@@ -251,52 +384,7 @@ docker stats --no-stream
 docker-compose -f docker-compose.prod.yml logs --tail=100 backend
 ```
 
-### Log Rotation
-
-Add to `/etc/logrotate.d/docker`:
-
-```
-/var/lib/docker/containers/*/*.log {
-    rotate 7
-    daily
-    compress
-    missingok
-    delaycompress
-    copytruncate
-}
-```
-
-## Security Checklist
-
-<Check>
-All secret keys are randomly generated and unique
-</Check>
-
-<Check>
-SSL/TLS is enabled with valid certificate
-</Check>
-
-<Check>
-JWT_COOKIE_SECURE is set to true
-</Check>
-
-<Check>
-CORS_ORIGINS only includes your domain
-</Check>
-
-<Check>
-DEBUG is set to false
-</Check>
-
-<Check>
-Firewall is configured
-</Check>
-
-<Check>
-SSH key authentication (disable password auth)
-</Check>
-
-## Troubleshooting
+### Troubleshooting
 
 <Accordion title="502 Bad Gateway">
   - Check if containers are running: `docker-compose ps`
@@ -324,22 +412,13 @@ SSH key authentication (disable password auth)
   - Increase server RAM if needed
 </Accordion>
 
-## Scaling
-
-For higher load:
-
-1. **Horizontal scaling**: Use Docker Swarm or Kubernetes
-2. **Database**: Migrate from SQLite to PostgreSQL
-3. **Cache**: Use Redis cluster
-4. **Load balancer**: Add HAProxy or cloud load balancer
-
 ## Related
 
 <CardGroup cols={2}>
   <Card title="Docker Setup" icon="docker" href="/deployment/docker">
     Local Docker development
   </Card>
-  <Card title="Configuration" icon="gear" href="/installation">
-    Environment variables reference
+  <Card title="Installation" icon="gear" href="/installation">
+    Environment variables and local setup
   </Card>
 </CardGroup>

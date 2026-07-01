@@ -16,13 +16,17 @@ Automate WhatsApp messaging with MachinaOs. Receive messages, process them, and 
 
 | Node | Purpose |
 |------|---------|
-| **WhatsApp Connect** | Check connection status |
 | **WhatsApp Receive** | Trigger on incoming messages |
-| **WhatsApp Send** | Send messages to contacts/groups |
+| **WhatsApp Send** | Send messages to contacts, groups, or channels (also usable as an AI Agent tool) |
+| **WhatsApp DB** | Query chat history, contacts, groups, and newsletter channels |
+
+<Info>
+Connecting your WhatsApp account is done through the Credentials modal (WhatsApp panel), not a workflow node.
+</Info>
 
 ## Step 1: Connect WhatsApp
 
-1. Click the **WhatsApp icon** in the toolbar (or add WhatsApp Connect node)
+1. Click the **WhatsApp icon** in the toolbar to open the WhatsApp panel
 2. A modal appears with a QR code
 3. Open WhatsApp on your phone > Settings > Linked Devices > Link a Device
 4. Scan the QR code
@@ -64,7 +68,7 @@ Ignore Own Messages: true
 3. Configure:
 
 ```
-Model: gpt-4o-mini
+Model: gpt-4.1-mini
 Prompt: "Reply to this WhatsApp message: {{whatsappReceive.text}}"
 ```
 
@@ -146,9 +150,9 @@ Group: [Select from dropdown]
 ## Troubleshooting
 
 <Accordion title="QR code not appearing">
-  - Ensure the WhatsApp service is running on port 5000
-  - Check Docker logs: `docker-compose logs whatsapp`
-  - Restart the service: `docker-compose restart whatsapp`
+  - Ensure the WhatsApp service is running (default port 9400)
+  - Open the WhatsApp panel from the toolbar and click **Restart** to relaunch the connection
+  - Check the Terminal tab for WhatsApp service logs
 </Accordion>
 
 <Accordion title="Messages not being received">

@@ -13,13 +13,18 @@ This tutorial covers the fundamentals of creating workflows in MachinaOs.
 The main area where you build workflows by connecting nodes.
 
 ### Component Palette
-Left sidebar with all available nodes organized by category:
-- **AI Models** - Chat models (OpenAI, Claude, Gemini)
-- **AI Agents** - Agent and memory nodes
-- **WhatsApp** - Messaging automation
+Left sidebar with all available nodes organized by category. A few of the categories you will use most:
+- **AI Models** - Chat models (OpenAI, Anthropic, Gemini, OpenRouter, Groq, Cerebras, DeepSeek, Kimi, Mistral, Ollama, LM Studio)
+- **AI Agents** - Agent, specialized agents, and memory nodes
+- **WhatsApp / Telegram / Social** - Messaging automation
 - **Android** - Device control
-- **Utilities** - HTTP, webhooks, code execution
-- **Schedulers** - Triggers and timers
+- **Code Executors** - Python, Monty, JavaScript, TypeScript
+- **Webhooks and Utilities** - HTTP, webhooks, console, chat trigger
+- **Schedulers** - Timer and cron scheduler
+
+<Tip>
+The toolbar **Normal / Dev** toggle filters the palette. Normal mode shows only AI Agents, Models, Skills, and Tools; switch to **Dev** to see every category. See the full category list in the [Node Overview](/nodes/overview).
+</Tip>
 
 ### Toolbar
 Top bar with workflow controls:
@@ -80,7 +85,7 @@ Let's build a workflow that triggers on a schedule and logs the time.
 
 ### Step 2: Add a Python Executor
 
-1. Drag **Python Executor** from Utilities
+1. Drag **Python Executor** from Code Executors
 2. Connect Cron output to Python input
 3. Add this code:
 

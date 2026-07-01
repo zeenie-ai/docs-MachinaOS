@@ -32,38 +32,54 @@ Scrapes links from web pages with support for pagination and date ranges.
 
 | Mode | Description | Use Case |
 |------|-------------|----------|
-| Single | One request to URL | Simple page scraping |
-| Date Range | Iterate through dates | News archives, dated content |
-| Pagination | Follow page numbers | Multi-page listings |
+| single | One request to the URL | Simple page scraping |
+| date | Iterate through a date range | News archives, dated content |
+| page | Iterate through page numbers | Multi-page listings |
 
 ### Parameters
 
 <ParamField path="url" type="string" required>
-  URL to scrape. Use `{{date}}` or `{{page}}` placeholders for iteration.
+  URL template. Use `{date}` (date mode) or `{page}` (page mode) placeholders for iteration.
 </ParamField>
 
-<ParamField path="mode" type="select" default="single">
-  Scraping mode: single, date_range, or pagination
+<ParamField path="iteration_mode" type="select" default="single">
+  Iteration mode: single, date, or page
 </ParamField>
 
-<ParamField path="linkSelector" type="string" default="a">
-  CSS selector for links to extract
+<ParamField path="link_selector" type="string" default="a[href$=&quot;.pdf&quot;]">
+  CSS selector for links to extract from each fetched page
 </ParamField>
 
-<ParamField path="startDate" type="string">
-  Start date for date_range mode (YYYY-MM-DD)
+<ParamField path="headers" type="string" default="{}">
+  JSON string of request headers
 </ParamField>
 
-<ParamField path="endDate" type="string">
-  End date for date_range mode (YYYY-MM-DD)
+<ParamField path="start_date" type="string">
+  Start date for date mode (YYYY-MM-DD)
 </ParamField>
 
-<ParamField path="startPage" type="number" default="1">
-  Start page for pagination mode
+<ParamField path="end_date" type="string">
+  End date for date mode (YYYY-MM-DD)
 </ParamField>
 
-<ParamField path="endPage" type="number" default="10">
-  End page for pagination mode
+<ParamField path="date_placeholder" type="string" default="{date}">
+  Token in the URL replaced with each date (date mode)
+</ParamField>
+
+<ParamField path="start_page" type="number" default="1">
+  First page number (page mode)
+</ParamField>
+
+<ParamField path="end_page" type="number" default="10">
+  Last page number, inclusive (page mode)
+</ParamField>
+
+<ParamField path="max_pages" type="number" default="10">
+  Safety cap on the number of pages fetched (1-1000)
+</ParamField>
+
+<ParamField path="use_proxy" type="boolean" default="false">
+  Route requests through a residential proxy provider. When enabled, exposes `proxy_provider`, `proxy_country`, and `session_type` (rotating/sticky).
 </ParamField>
 
 ### Output
@@ -71,18 +87,19 @@ Scrapes links from web pages with support for pagination and date ranges.
 ```json
 {
   "items": [
-    {"url": "https://example.com/article1.pdf"},
-    {"url": "https://example.com/article2.pdf"}
+    {"url": "https://example.com/article1.pdf", "text": "Article 1", "source_url": "https://news.site/archive/2025-01-01"},
+    {"url": "https://example.com/article2.pdf", "text": "Article 2", "source_url": "https://news.site/archive/2025-01-01"}
   ],
-  "count": 2
+  "item_count": 2,
+  "errors": []
 }
 ```
 
 ### Example: Scrape News Archive
 
 ```
-URL: https://news.site/archive/{{date}}
-Mode: date_range
+URL: https://news.site/archive/{date}
+Iteration Mode: date
 Start Date: 2025-01-01
 End Date: 2025-01-31
 Link Selector: a.article-link
@@ -96,25 +113,25 @@ Downloads files from URLs in parallel using semaphore-based concurrency.
 
 ### Parameters
 
-<ParamField path="outputDirectory" type="string" required>
-  Directory to save downloaded files
+<ParamField path="output_dir" type="string" default="downloads">
+  Directory to save downloaded files. Defaults to a `downloads/` folder inside the workflow workspace.
 </ParamField>
 
-<ParamField path="maxWorkers" type="number" default="5">
+<ParamField path="max_workers" type="number" default="4">
   Maximum parallel downloads (1-32)
 </ParamField>
 
-<ParamField path="skipExisting" type="boolean" default="true">
+<ParamField path="skip_existing" type="boolean" default="true">
   Skip files that already exist
 </ParamField>
 
-<ParamField path="timeout" type="number" default="30000">
-  Download timeout in milliseconds
+<ParamField path="timeout" type="number" default="60">
+  Download timeout in seconds (1-600)
 </ParamField>
 
 ### Input
 
-Expects array of items with `url` field (from HTTP Scraper):
+Accepts an array of `items` with a `url` field (from HTTP Scraper), or a plain `urls` list:
 
 ```json
 {
@@ -127,15 +144,18 @@ Expects array of items with `url` field (from HTTP Scraper):
 
 ### Output
 
+Counts plus a `files` array describing the successful downloads:
+
 ```json
 {
-  "downloaded": [
-    {"url": "...", "path": "/output/file1.pdf", "size": 1024000},
-    {"url": "...", "path": "/output/file2.pdf", "size": 2048000}
-  ],
-  "failed": [],
+  "downloaded": 2,
   "skipped": 0,
-  "total": 2
+  "failed": 0,
+  "files": [
+    {"status": "downloaded", "url": "...", "path": "/output/file1.pdf", "filename": "file1.pdf", "size": 1024000},
+    {"status": "downloaded", "url": "...", "path": "/output/file2.pdf", "filename": "file2.pdf", "size": 2048000}
+  ],
+  "output_dir": "/output"
 }
 ```
 
@@ -160,22 +180,21 @@ Parses documents to extract text content using configurable parsers.
   Parser to use: pypdf, marker, unstructured, beautifulsoup
 </ParamField>
 
-<ParamField path="inputDirectory" type="string" required>
-  Directory containing files to parse (or from File Downloader)
+<ParamField path="file_path" type="string">
+  Single file path to parse (takes precedence over `input_dir`)
+</ParamField>
+
+<ParamField path="input_dir" type="string">
+  Directory to scan for files matching `file_pattern`
+</ParamField>
+
+<ParamField path="file_pattern" type="string" default="*.pdf">
+  Glob pattern used when scanning `input_dir` (e.g. `*.pdf`, `*.html`)
 </ParamField>
 
 ### Input
 
-Accepts paths from File Downloader or a directory:
-
-```json
-{
-  "downloaded": [
-    {"path": "/output/file1.pdf"},
-    {"path": "/output/file2.pdf"}
-  ]
-}
-```
+Set `file_path` for a single file, or `input_dir` + `file_pattern` for a directory scan.
 
 ### Output
 
@@ -183,14 +202,15 @@ Accepts paths from File Downloader or a directory:
 {
   "documents": [
     {
-      "path": "/output/file1.pdf",
-      "text": "Extracted text content...",
-      "pages": 10,
+      "source": "/output/file1.pdf",
+      "filename": "file1.pdf",
+      "content": "Extracted text content...",
+      "length": 24500,
       "parser": "pypdf"
     }
   ],
-  "total": 2,
-  "failed": 0
+  "parsed_count": 2,
+  "failed": []
 }
 ```
 
@@ -214,9 +234,9 @@ Splits text into overlapping chunks for embedding generation.
 
 | Strategy | Description | Best For |
 |----------|-------------|----------|
-| Recursive | Split by paragraphs, sentences, words | Most documents |
-| Markdown | Preserve markdown structure | Markdown files |
-| Token | Split by token count | Consistent chunk sizes |
+| recursive | Split by paragraphs, sentences, words | Most documents |
+| markdown | Preserve markdown structure | Markdown files |
+| token | Falls back to recursive splitting | Consistent chunk sizes |
 
 ### Parameters
 
@@ -224,20 +244,22 @@ Splits text into overlapping chunks for embedding generation.
   Chunking strategy: recursive, markdown, or token
 </ParamField>
 
-<ParamField path="chunkSize" type="number" default="1000">
+<ParamField path="chunk_size" type="number" default="1000">
   Target chunk size in characters (100-8000)
 </ParamField>
 
-<ParamField path="chunkOverlap" type="number" default="200">
+<ParamField path="overlap" type="number" default="200">
   Overlap between chunks (0-1000)
 </ParamField>
 
 ### Input
 
+Accepts a `documents` array (with a `content` field, from Document Parser) or a plain `text` string:
+
 ```json
 {
   "documents": [
-    {"path": "...", "text": "Long document text..."}
+    {"source": "...", "content": "Long document text..."}
   ]
 }
 ```
@@ -248,16 +270,13 @@ Splits text into overlapping chunks for embedding generation.
 {
   "chunks": [
     {
-      "text": "Chunk 1 text...",
-      "metadata": {
-        "source": "/output/file1.pdf",
-        "chunk_index": 0,
-        "start_char": 0,
-        "end_char": 1000
-      }
+      "source": "/output/file1.pdf",
+      "chunk_index": 0,
+      "content": "Chunk 1 text...",
+      "length": 1000
     }
   ],
-  "total_chunks": 50
+  "chunk_count": 50
 }
 ```
 
@@ -289,41 +308,45 @@ Generates vector embeddings from text chunks using various providers.
 ### Parameters
 
 <ParamField path="provider" type="select" default="huggingface">
-  Embedding provider: huggingface, openai, or ollama
+  Embedding provider: huggingface (local), openai, or ollama (local server)
 </ParamField>
 
 <ParamField path="model" type="string" default="BAAI/bge-small-en-v1.5">
-  Model name/path for embeddings
+  Model name for the chosen provider. Override when switching provider (e.g. `text-embedding-3-small` for OpenAI).
 </ParamField>
 
-<ParamField path="batchSize" type="number" default="32">
-  Batch size for embedding generation
+<ParamField path="batch_size" type="number" default="32">
+  Batch size for embedding generation (1-256)
+</ParamField>
+
+<ParamField path="api_key" type="string">
+  OpenAI API key. Passed as a node parameter (only used when provider is openai).
 </ParamField>
 
 ### Input
 
+Accepts a `chunks` array (from Text Chunker), each with a `content` field:
+
 ```json
 {
   "chunks": [
-    {"text": "Chunk text...", "metadata": {...}}
+    {"content": "Chunk text...", "source": "...", "chunk_index": 0}
   ]
 }
 ```
 
 ### Output
 
+Parallel arrays: `embeddings` (one vector per chunk) plus the original `chunks` echoed back for pairing.
+
 ```json
 {
-  "embeddings": [
-    {
-      "text": "Chunk text...",
-      "embedding": [0.123, -0.456, ...],
-      "metadata": {...}
-    }
-  ],
-  "model": "BAAI/bge-small-en-v1.5",
+  "embeddings": [[0.123, -0.456, ...]],
+  "embedding_count": 50,
   "dimensions": 384,
-  "total": 50
+  "chunks": [{"content": "Chunk text...", "source": "...", "chunk_index": 0}],
+  "provider": "huggingface",
+  "model": "BAAI/bge-small-en-v1.5"
 }
 ```
 
@@ -359,55 +382,79 @@ Stores and queries vector embeddings using various backends.
   Operation: store, query, or delete
 </ParamField>
 
-<ParamField path="collectionName" type="string" required>
+<ParamField path="collection_name" type="string" default="documents">
   Collection/index name
 </ParamField>
 
-<ParamField path="topK" type="number" default="5">
-  Number of results for query operation
+<ParamField path="top_k" type="number" default="5">
+  Number of results for the query operation (1-100)
+</ParamField>
+
+<ParamField path="query_embedding" type="array">
+  Single query vector for the query operation (from Embedding Generator)
+</ParamField>
+
+<ParamField path="ids" type="array">
+  Vector IDs to remove for the delete operation
+</ParamField>
+
+<ParamField path="persist_dir" type="string" default="./data/vectors">
+  ChromaDB persistence directory (chroma backend)
+</ParamField>
+
+<ParamField path="qdrant_url" type="string" default="http://localhost:6333">
+  Qdrant server URL (qdrant backend)
+</ParamField>
+
+<ParamField path="pinecone_api_key" type="string">
+  Pinecone API key, passed as a node parameter (pinecone backend)
 </ParamField>
 
 ### Store Operation
 
-Input (from Embedding Generator):
+Input (from Embedding Generator) — pass both `embeddings` and `chunks`:
 ```json
 {
-  "embeddings": [
-    {"text": "...", "embedding": [...], "metadata": {...}}
-  ]
+  "embeddings": [[0.123, -0.456, ...]],
+  "chunks": [{"content": "...", "source": "file1.pdf", "chunk_index": 0}]
 }
 ```
 
 Output:
 ```json
 {
-  "stored": 50,
-  "collection": "my-docs",
-  "backend": "chroma"
+  "stored_count": 50,
+  "collection_count": 50,
+  "collection_name": "documents",
+  "backend": "chroma",
+  "operation": "store"
 }
 ```
 
 ### Query Operation
 
-Input:
+Query with a precomputed embedding vector (embed your question first, then feed it here):
 ```json
 {
-  "query": "What is the main topic?",
+  "query_embedding": [0.123, -0.456, ...],
   "top_k": 5
 }
 ```
 
-Output:
+Output — the match shape differs by backend (`distance` for Chroma, `score` for Qdrant/Pinecone):
 ```json
 {
-  "results": [
+  "matches": [
     {
-      "text": "Relevant chunk text...",
-      "score": 0.89,
-      "metadata": {"source": "file1.pdf", "chunk_index": 5}
+      "id": "a1b2c3...",
+      "document": "Relevant chunk text...",
+      "metadata": {"source": "file1.pdf", "chunk_index": 5},
+      "distance": 0.11
     }
   ],
-  "query": "What is the main topic?"
+  "collection_name": "documents",
+  "backend": "chroma",
+  "operation": "query"
 }
 ```
 
@@ -424,12 +471,12 @@ Output:
 ### Configuration
 
 1. **HTTP Scraper**
-   - URL: `https://docs.example.com/api/{{page}}`
-   - Mode: pagination
+   - URL: `https://docs.example.com/api/{page}`
+   - Iteration Mode: page
    - Link Selector: `a.pdf-link`
 
 2. **File Downloader**
-   - Output: `./downloads`
+   - Output Dir: `./downloads`
    - Max Workers: 10
 
 3. **Document Parser**
@@ -492,12 +539,12 @@ GPU is required for the **Marker** parser (OCR). Use **PyPDF** for non-scanned d
     Use RAG context with AI agents
   </Card>
   <Card title="Webhooks" icon="webhook" href="/nodes/webhooks">
-    HTTP Request for APIs
+    Trigger and respond over HTTP
   </Card>
   <Card title="AI Models" icon="brain" href="/nodes/ai-models">
     AI providers for generation
   </Card>
-  <Card title="Code Execution" icon="code" href="/nodes/schedulers">
-    Python for custom processing
+  <Card title="Schedulers & Triggers" icon="clock" href="/nodes/schedulers">
+    Run the RAG pipeline on a schedule
   </Card>
 </CardGroup>

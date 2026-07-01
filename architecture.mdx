@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: Deep dive into MachinaOs system architecture, execution engine, AI agents, and cache/security layers
+description: Deep dive into MachinaOs system architecture, execution engine, AI agents, and cache/security layers (plugin-first, WebSocket-first, Temporal execution)
 ---
 
 # Architecture
@@ -14,16 +14,18 @@ MachinaOs is three loosely-coupled tiers talking over a single persistent WebSoc
 ```
 +------------------------------------------------------------------------+
 |  Frontend tier (client/)                                               |
-|    React + TypeScript + React Flow + Zustand + Ant Design              |
-|    Dracula-themed canvas, parameter panel, credentials modal           |
+|    React 19 + TypeScript + Vite + React Flow + Zustand                 |
+|    Tailwind v4 + shadcn/ui + Radix + TanStack Query                    |
+|    Themed canvas, parameter panel, credentials modal                   |
 +------------------------------------------------------------------------+
                              |
                  WebSocket   |   /ws/status  (single long-lived connection)
                              v
 +------------------------------------------------------------------------+
 |  Backend tier (server/)                                                |
-|    FastAPI + 89 WebSocket handlers + dependency injection container    |
-|    WorkflowService (facade) -> NodeExecutor -> per-node handlers       |
+|    FastAPI + WebSocket handlers + dependency injection container       |
+|    Plugin-first nodes (BaseNode folders) -> backend NodeSpec is SSOT   |
+|    WorkflowService (facade) -> NodeExecutor -> per-node execute()      |
 |    ParameterResolver -> template {{node.field}} substitution           |
 |    AuthService -> encrypted credentials (Fernet + PBKDF2)              |
 +------------------------------------------------------------------------+
@@ -32,33 +34,33 @@ MachinaOs is three loosely-coupled tiers talking over a single persistent WebSoc
 +------------------------------------------------------------------------+
 |  Execution tier                                                        |
 |    Temporal workers (distributed)  or  local asyncio decide loop       |
-|    Redis (cache, locks, streams)   SQLite (machina.db, credentials.db) |
-|    Node.js server (JS/TS code exec) WhatsApp RPC (port 9400)           |
+|    Redis (cache, locks, streams)   SQLite (workflow.db, credentials.db)|
+|    Node.js server (JS/TS code exec, port 3020)  WhatsApp RPC (9400)    |
 |    Android relay WebSocket         Temporal server (ports 7233/8080)   |
 +------------------------------------------------------------------------+
                              |
                              v
-   External services: OpenAI, Anthropic, Gemini, OpenRouter, xAI,
-   DeepSeek, Kimi, Mistral, Groq, Cerebras, Google Workspace, WhatsApp,
-   Telegram, Twitter/X, Brave, Serper, Perplexity, Apify, residential
-   proxies, webhooks.
+   External services: OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek,
+   Kimi, Mistral, Groq, Cerebras, plus local Ollama / LM Studio servers,
+   Google Workspace, WhatsApp, Telegram, Twitter/X, Brave, Serper,
+   Perplexity, Apify, Stripe, residential proxies, webhooks.
 ```
 
 <CardGroup cols={2}>
-  <Card title="96 Workflow Nodes" icon="cube">
-    AI, agents, social, Android, documents, Google Workspace, code, proxies, utilities
+  <Card title="100+ Workflow Nodes" icon="cube">
+    AI, agents, social, Android, documents, Google Workspace, code, browser, proxies, utilities
   </Card>
-  <Card title="10 LLM Providers" icon="brain">
-    OpenAI, Anthropic, Gemini, OpenRouter, xAI, DeepSeek, Kimi, Mistral, Groq, Cerebras
+  <Card title="11 Chat-Model Providers" icon="brain">
+    OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek, Kimi, Mistral, Groq, Cerebras, plus local Ollama and LM Studio
   </Card>
-  <Card title="15 Specialized Agents" icon="robot">
-    Android, Coding, Web, Task, Social, Travel, Tool, Productivity, Payments, Consumer, Autonomous, Orchestrator, AI Employee, RLM, Claude Code
+  <Card title="16 Specialized Agents" icon="robot">
+    Android, Coding, Web, Task, Social, Travel, Tool, Productivity, Payments, Consumer, Autonomous, Orchestrator, AI Employee, RLM, Claude Code, Codex
   </Card>
-  <Card title="89 WebSocket Handlers" icon="bolt">
-    Push-based updates replace REST polling
+  <Card title="WebSocket-First" icon="bolt">
+    A single persistent connection carries all frontend-backend RPC and push updates
   </Card>
-  <Card title="49 Built-in Skills" icon="wand-magic-sparkles">
-    Across 10 categories, DB-backed with SKILL.md defaults
+  <Card title="Built-in Skills" icon="wand-magic-sparkles">
+    Dozens of skills across many categories, DB-backed with SKILL.md defaults
   </Card>
   <Card title="Three Execution Modes" icon="gear">
     Temporal distributed, Redis parallel, sequential fallback
@@ -147,42 +149,45 @@ Multiple runs execute simultaneously with no interference. The firing trigger is
 ### Push vs Polling Triggers
 
 ```
-Push triggers (asyncio.Future + dispatch):
+Push triggers (fire on an inbound event):
   whatsappReceive, webhookTrigger, chatTrigger, taskTrigger,
-  telegramReceive, start
+  telegramReceive, emailReceive
 
-Polling triggers (asyncio.Queue + poll coroutine):
-  twitterReceive   (X API has no webhook on free tier)
-  gmailReceive     (Gmail push requires paid Google Cloud setup)
+Polling triggers (poll an API on an interval):
+  googleGmailReceive  (Gmail push requires paid Google Cloud setup)
+  twitterReceive      (X API has no webhook on the free tier)
 
 Scheduler:
-  cronScheduler    (APScheduler directly, not through event waiter)
+  cronScheduler       (cron-expression schedule)
 ```
 
-Every push trigger goes through the generic `event_waiter` module: register a `Waiter` with a filter closure, suspend on `wait_for_event()`, resume when an external service dispatches a matching event. Backend supports both in-memory (`asyncio.Future`) and Redis Streams modes for Temporal multi-worker deployments.
+Under the default Temporal execution path, each deployed trigger runs as a listener workflow that spawns an isolated child run per event. On the legacy local path, push triggers register a waiter with a filter closure and suspend until an external service dispatches a matching event (in-memory `asyncio.Future`, or Redis Streams for multi-worker deployments).
 
 ## AI Agent System
 
-### 10 LLM Providers
+### 11 Chat-Model Providers
+
+Each provider below has its own chat-model node and appears in every agent's provider dropdown. (xAI is reachable on the native chat path through the shared OpenAI-compatible client, but it is not a standalone chat-model node.)
 
 | Provider | Native SDK Path | LangChain Path | Notes |
 |---|---|---|---|
-| OpenAI | Yes | Yes | GPT 4.x/5.x + o-series reasoning |
-| Anthropic | Yes | Yes | Extended thinking via `budget_tokens` |
-| Gemini | Yes | Yes (fallback) | Native bypasses LangChain Windows hang |
+| OpenAI | Yes | Yes | GPT-5.5/5.4/5.2, GPT-4.1 family, o3/o4-mini reasoning, GPT-4o/4o-mini |
+| Anthropic | Yes | Yes | Claude Fable 5, Opus 4.8/4.7, Sonnet 4.6, Haiku 4.5 (extended thinking via `budget_tokens`) |
+| Gemini | Yes | Yes (fallback) | Gemini 3.5-flash, 3.1-pro/flash-lite, 3-flash, 2.5-pro/flash/flash-lite; native path bypasses a LangChain Windows hang |
 | OpenRouter | Yes | Yes | 200+ models through one API |
-| xAI | Yes (shared OpenAIProvider) | Yes | OpenAI-compatible |
-| DeepSeek | Yes (shared OpenAIProvider) | Yes | Chat + Reasoner (always-on CoT) |
-| Kimi | Yes (shared OpenAIProvider) | Yes | Moonshot K2.5 / K2-thinking |
-| Mistral | Yes (shared OpenAIProvider) | Yes | Large / Small / Codestral |
-| Groq | No (LangChain only) | Yes | Llama 4, Qwen3, GPT-OSS |
-| Cerebras | No (LangChain only) | Yes | Llama, Qwen |
+| DeepSeek | Yes (shared OpenAIProvider) | Yes | deepseek-v4-flash, deepseek-v4-pro (chat/reasoner legacy) |
+| Kimi | Yes (shared OpenAIProvider) | Yes | Moonshot kimi-k2.6, kimi-k2.5, kimi-k2.7-code |
+| Mistral | Yes (shared OpenAIProvider) | Yes | Large / Medium / Small / Codestral (latest) |
+| Groq | No (LangChain only) | Yes | Llama 3.3-70b, Llama 3.1-8b, GPT-OSS-120b/20b, Qwen3-32b |
+| Cerebras | No (LangChain only) | Yes | GPT-OSS-120b, Qwen-3-235b, GLM-4.7 |
+| Ollama | Yes (shared OpenAIProvider) | Yes | Local server; whatever models the user has pulled |
+| LM Studio | Yes (shared OpenAIProvider) | Yes | Local server; whatever models the user has loaded |
 
 ### Dual-Path Architecture
 
 ```
 execute_chat(parameters)                        execute_agent(parameters)
-  direct chat completions                         LangGraph tool-calling loop
+  direct chat completions                         tool-calling agent loop
         |                                               |
         v                                               v
 is_native_provider(provider)?              create_model(provider, ...)
@@ -196,28 +201,28 @@ is_native_provider(provider)?              create_model(provider, ...)
                                                    bind_tools(...)
                                                         |
                                                         v
-                                                 LangGraph StateGraph
-                                                 (agent node <-> tools node loop)
+                                                 _run_agent_loop
+                                                 (LLM step <-> tool exec loop)
 ```
 
-The native path returns a normalized `LLMResponse` dataclass across all providers. The LangChain path is used for agent tool-calling because LangGraph's checkpointer, state graph, and tool-execution callback layer have no native equivalent today.
+The native path returns a normalized `LLMResponse` dataclass across all providers. Agent tool-calling still uses the LangChain chat-model wrappers (`bind_tools`) driven by the plain-async `_run_agent_loop`; the native SDK path powers direct chat completions and model discovery. Groq and Cerebras remain LangChain-only for chat as well.
 
-### 15 Specialized Agents
+### 16 Specialized Agents
 
-All specialized agents share the same handle architecture (`input-main`, `input-memory`, `input-skill`, `input-tools`, `input-task`) and inherit `AI_AGENT_PROPERTIES`. They only differ in icon, title, theme color, and default prompt.
+All specialized agents share the same handle architecture (`input-main`, `input-memory`, `input-skill`, `input-tools`, `input-task`) and dispatch through the same `BaseNode.execute()` plugin path. They mostly differ in icon, title, theme color, and default prompt.
 
 ```
 android_agent      coding_agent        web_agent         task_agent
 social_agent       travel_agent        tool_agent        productivity_agent
 payments_agent     consumer_agent      autonomous_agent  orchestrator_agent
-ai_employee        rlm_agent           claude_code_agent
+ai_employee        rlm_agent           claude_code_agent codex_agent
 ```
 
 Routing:
 
-- **13 agents** route to `handle_chat_agent` (LangGraph loop, shared code path)
-- **`rlm_agent`** routes to `handle_rlm_agent` -> `RLMService` (REPL-based recursive LM)
-- **`claude_code_agent`** routes to `handle_claude_code_agent` -> Claude Code SDK
+- Most agents run the shared plain-async agent loop (`_run_agent_loop`) for tool calling and delegation.
+- **`rlm_agent`** routes to `RLMService` (REPL-based recursive LM with `llm_query` / `rlm_query` / `FINAL`).
+- **`claude_code_agent`** and **`codex_agent`** run through the multi-provider CLI agent framework (Claude Code / Codex CLIs) instead of the standard LLM loop.
 
 ### Agent Teams Topology
 
@@ -239,9 +244,9 @@ Routing:
        agent tool        agent tool            agent tool
 ```
 
-The team lead's LLM decides when to delegate based on task context. Delegation is **fire-and-forget**: the child spawns as `asyncio.create_task()`, the parent continues, and the child broadcasts its own status updates independently. Results can be retrieved via the auto-injected `check_delegated_tasks` tool or consumed by `taskTrigger` nodes elsewhere in the workflow.
+The team lead's LLM decides when to delegate based on task context. Under the default Temporal execution path, delegation spawns the teammate as a child workflow whose progress mirrors onto the parent's canvas badge and whose result flows back into the parent's loop. On the legacy local path, delegation is fire-and-forget: the child spawns as `asyncio.create_task()`, the parent continues, and the child broadcasts its own status independently. Either way, child completion can be consumed by `taskTrigger` nodes elsewhere in the workflow.
 
-### LangGraph StateGraph Flow
+### Agent Loop Flow
 
 ```
              +---------+
@@ -249,7 +254,7 @@ The team lead's LLM decides when to delegate based on task context. Delegation i
              | (LLM)   |
              +----+----+
                   |
-          should_continue()?
+          any tool_calls?
               /        \
        tools /          \ end
             v            v
@@ -261,7 +266,7 @@ The team lead's LLM decides when to delegate based on task context. Delegation i
             +---------> loop back to agent
 ```
 
-Max iterations guard against infinite tool loops. Tools are built as Pydantic-schema `StructuredTool` instances with the node's parameter schema.
+The loop routes purely on the model's `tool_calls`. A recursion limit guards against infinite tool loops, and a token-based compaction threshold summarizes the transcript before it overflows the model's context. Tools are built as Pydantic-schema `StructuredTool` instances with the node's parameter schema.
 
 ## Memory, Skills, Tokens, and Cost
 
@@ -296,13 +301,13 @@ Save updated Markdown back to node parameters
 
 ### Skill System
 
-49 built-in skills across 10 folders under `server/skills/`:
+Dozens of built-in skills organized into folders under `server/skills/`. Each top-level folder appears as an option in the Master Skill node's folder dropdown:
 
 ```
-assistant/ (5)           android_agent/ (12)       autonomous/ (5)
-coding_agent/ (2)        productivity_agent/ (6)   rlm_agent/ (1)
-social_agent/ (5)        task_agent/ (3)           travel_agent/ (2)
-web_agent/ (8)
+assistant/            android_agent/        autonomous/
+coding_agent/         productivity_agent/   rlm_agent/
+social_agent/         task_agent/           travel_agent/
+web_agent/            terminal/             payments_agent/
 ```
 
 Each skill is a folder with a `SKILL.md` file containing YAML frontmatter (name, description, allowed-tools, metadata) and Markdown instructions. First load seeds the database; after that the database is source of truth so users can edit skill instructions in the UI. "Reset to Default" reloads the original `SKILL.md`.
@@ -313,17 +318,18 @@ The `masterSkill` node aggregates multiple skills with enable/disable toggles. A
 
 Every AI execution stores a `TokenUsageMetric` row with input/output/cache/reasoning token counts and calculated costs (USD) based on `server/config/pricing.json`. Cumulative state per session lives in `SessionTokenState`.
 
-Compaction threshold priority:
+Compaction threshold priority (highest to lowest):
 
 1. Per-session `custom_threshold` (user-set)
-2. **Model-aware**: 50% of the model's context window (e.g., 500K for Claude Opus 4.6 with 1M context)
-3. Global `COMPACTION_THRESHOLD` fallback from `.env`
+2. Per-user `UserSettings.compaction_ratio` x the model's context window
+3. Environment `COMPACTION_RATIO` (default **0.8**) x the model's context window (e.g., ~838K for Claude Sonnet 4.6 with 1M context)
+4. JSON fallback `llm_defaults.json` ratio x context window
 
 When the cumulative session tokens cross the threshold, `CompactionService.compact_context()` generates a 5-section summary (Task Overview, Current State, Important Discoveries, Next Steps, Context to Preserve) following the Claude Code pattern and replaces the memory content. Anthropic and OpenAI also have native compaction APIs (`context_management` edits, `compact_threshold`) that are configured transparently.
 
 ## Communication Layer
 
-A single persistent WebSocket at `/ws/status` handles all frontend-backend communication. There are **89 WebSocket handlers** registered with the `@ws_handler` decorator in `server/routers/websocket.py`, covering: node parameters, tool schemas, node execution, triggers, dead letter queue, deployment, AI operations, API keys, OAuth flows (Claude, Twitter, Google), Android, WhatsApp, Telegram, workflow storage, chat messages, console logs, skills, memory, user settings, pricing, agent teams, and model registry.
+A single persistent WebSocket at `/ws/status` handles most frontend-backend communication. Handlers live in the `MESSAGE_HANDLERS` map in `server/routers/websocket.py` plus plugin-registered handlers that self-wire through `services.ws_handler_registry` (each self-contained plugin folder can own its own WebSocket commands). Together they cover: node parameters, tool schemas, node execution, triggers, dead letter queue, deployment, AI operations, API keys, OAuth flows (Claude, Twitter, Google), Android, WhatsApp, Telegram, workflow storage, chat messages, console logs, skills, memory, user settings, pricing, agent teams, and model registry.
 
 ### Request/Response Pattern
 
@@ -350,7 +356,7 @@ variables_update    compaction_completed
 
 ### Auto-Reconnect and Keepalive
 
-Frontend sends `{"type": "ping"}` every 30 seconds. On disconnect, the WebSocket context schedules a reconnect after 3 seconds with a 100ms mount delay to avoid React Strict Mode double-connect in development. Connection is gated on `isAuthenticated` so logged-out users never connect.
+Frontend sends `{"type": "ping"}` every 30 seconds. Reconnection uses PartySocket with jittered exponential backoff and message replay, so a dropped socket recovers automatically and queued requests replay on the new connection. Connection is gated on `isAuthenticated` so logged-out users never connect.
 
 ## Cache, Persistence, and Security
 
@@ -359,16 +365,16 @@ Frontend sends `{"type": "ping"}` every 30 seconds. On disconnect, the WebSocket
 MachinaOs follows the n8n cache pattern with automatic environment-based fallback:
 
 ```
-Production (Docker):  Redis  ->  SQLite (cache_entries)  ->  in-memory dict
-Local development:             SQLite (cache_entries)  ->  in-memory dict
-                               (Redis disabled via REDIS_ENABLED=false)
+Production:  Redis  ->  SQLite (cache_entries)  ->  in-memory dict
+Local dev:          SQLite (cache_entries)  ->  in-memory dict
+                    (Redis disabled via REDIS_ENABLED=false)
 ```
 
 `CacheService` in `server/core/cache.py` checks each backend in order. TTL expiration is supported across all three. A background `cleanup_expired_cache()` task removes expired SQLite rows.
 
 ### Encrypted Credentials
 
-API keys and OAuth tokens live in a **separate SQLite database** (`credentials.db`) isolated from the main `machina.db`. Encryption uses Fernet (AES-128-CBC + HMAC-SHA256) with keys derived from a server-scoped config key via PBKDF2HMAC (600K iterations, OWASP 2024 recommendation).
+API keys and OAuth tokens live in a **separate SQLite database** (`credentials.db`) isolated from the main workflow database (`workflow.db`). Encryption uses Fernet (AES-128-CBC + HMAC-SHA256) with keys derived from a server-scoped config key via PBKDF2HMAC (600K iterations, OWASP 2024 recommendation).
 
 ```
 API_KEY_ENCRYPTION_KEY (.env)  +  salt (from credentials.db, 256 bits)
@@ -410,13 +416,13 @@ WebSocket connections check the JWT cookie before accepting. Auth context has ex
 
 <CardGroup cols={2}>
   <Card title="Node Catalog" icon="cube" href="/nodes/overview">
-    Browse all 96 workflow nodes by category
+    Browse all workflow nodes by category
   </Card>
   <Card title="AI Models" icon="brain" href="/nodes/ai-models">
-    10 LLM providers with native SDK and LangChain paths
+    11 chat-model providers with native SDK and LangChain paths
   </Card>
   <Card title="AI Agents" icon="robot" href="/nodes/ai-agent">
-    15 specialized agents with teams and delegation
+    16 specialized agents with teams and delegation
   </Card>
   <Card title="GitHub" icon="github" href="https://github.com/trohitg/MachinaOS">
     Source code and in-repo `docs-internal/` deep dives

@@ -1,39 +1,42 @@
 ---
 title: Android Nodes
-description: 17 nodes for Android device automation
+description: 16 nodes for Android device automation
 ---
 
 # Android Nodes
 
-Control and monitor Android devices with 17 specialized nodes.
+Control and monitor Android devices with 16 specialized nodes.
 
 ## Connection Setup
 
-### Android Device Setup
+Android device connection is configured in the **Credentials modal** (Android panel), not on the workflow nodes themselves. Once a device is connected there, every Android service node in your workflow uses that connection.
 
-Configure how MachinaOs connects to your device.
+There are two connection methods:
 
-<ParamField path="connection_type" type="select" required>
-  Connection method: Local ADB Device or Remote WebSocket
-</ParamField>
+<Tabs>
+  <Tab title="Remote Relay (QR pairing)">
+    The recommended method. Open the Credentials modal, choose the Android panel, and click **Connect**. A QR code appears - scan it with the companion Android app to pair the device.
 
-**Local ADB:**
-<ParamField path="device_id" type="select">
-  Select from connected devices
-</ParamField>
+    The relay uses a two-state model:
 
-<ParamField path="auto_forward" type="boolean" default="true">
-  Automatically setup port forwarding
-</ParamField>
+    - **Connected** - the WebSocket connection to the relay server is active. A QR code is available for pairing.
+    - **Paired** - an Android device has scanned the QR and is paired through the relay.
 
-<ParamField path="port" type="number" default="8888">
-  Port for ADB forwarding
-</ParamField>
+    Android service nodes require the device to be **paired** to execute (the node status indicator shows green when paired, red otherwise). If the device disconnects while the relay stays connected, a new QR is shown so you can re-pair.
+  </Tab>
+  <Tab title="Local ADB">
+    Connect a device over USB with ADB. MachinaOs sets up ADB port forwarding automatically so the backend can reach the device.
 
-**Remote WebSocket:**
-<ParamField path="websocket_url" type="string">
-  Relay server URL (configured in .env)
-</ParamField>
+    Requirements:
+
+    - USB debugging enabled in Developer options
+    - `adb` available on your PATH
+  </Tab>
+</Tabs>
+
+<Info>
+Connection is set up once in the Credentials modal. The service nodes below carry only their action and parameters - no connection fields.
+</Info>
 
 ---
 
@@ -392,9 +395,10 @@ curl -X POST http://localhost:3010/webhook/wifi \
 </Accordion>
 
 <Accordion title="Remote relay issues">
-  - Verify relay URL in .env
-  - Check API key is valid
-  - Ensure companion app is running
+  - Open the Credentials modal (Android panel) and check the status: the device must be **paired**, not just **connected**
+  - If only connected, re-scan the QR code with the companion app to pair
+  - Ensure the companion Android app is running on the device
+  - Use Reconnect in the Android panel if the relay connection dropped
 </Accordion>
 
 ---

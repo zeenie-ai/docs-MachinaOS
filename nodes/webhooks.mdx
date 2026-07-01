@@ -11,9 +11,20 @@ Make HTTP requests to external APIs and receive incoming webhooks.
 
 | Node | Type | Purpose |
 |------|------|---------|
-| HTTP Request | Action | Make outgoing HTTP calls |
+| HTTP Request | Action (also AI tool) | Make outgoing HTTP calls |
 | Webhook Trigger | Trigger | Receive incoming HTTP requests |
 | Webhook Response | Action | Send custom response to webhook caller |
+
+MachinaOs also ships other event-based triggers that start a workflow the same way Webhook Trigger does:
+
+| Trigger | Fires when |
+|---------|-----------|
+| Chat Trigger | A message is sent from the Console panel's chat tab |
+| Task Completed | A delegated child agent finishes its task (success or error) |
+
+<Info>
+Trigger nodes only start firing once a workflow is **deployed**. Deploy from the toolbar; a saved-but-not-deployed workflow does not listen for events.
+</Info>
 
 ---
 
@@ -36,11 +47,15 @@ Make HTTP requests to external APIs and services.
 </ParamField>
 
 <ParamField path="body" type="string">
-  Request body (for POST, PUT, PATCH)
+  Request body (JSON object or raw string). Only sent for POST, PUT, and PATCH; ignored for GET and DELETE.
 </ParamField>
 
 <ParamField path="timeout" type="number" default="30">
-  Request timeout in seconds
+  Request timeout in seconds (1-600)
+</ParamField>
+
+<ParamField path="use_proxy" type="boolean" default="false">
+  Route the request through a residential proxy provider. When enabled, you can also set `proxy_provider` (default `auto`), `proxy_country` (ISO code), and `session_type` (rotating or sticky).
 </ParamField>
 
 ### Output
@@ -48,15 +63,21 @@ Make HTTP requests to external APIs and services.
 ```json
 {
   "status": 200,
-  "statusText": "OK",
+  "data": {
+    "result": "response data"
+  },
   "headers": {
     "content-type": "application/json"
   },
-  "data": {
-    "result": "response data"
-  }
+  "url": "https://api.example.com/users/42",
+  "method": "GET",
+  "proxied": false
 }
 ```
+
+<Info>
+HTTP Request is also a **dual-purpose tool** — connect it to an AI Agent's tools handle and the agent can make HTTP calls on its own.
+</Info>
 
 ### Examples
 
@@ -89,16 +110,28 @@ Receive incoming HTTP requests at a dynamic endpoint.
 
 ### Parameters
 
-<ParamField path="path" type="string" required>
+<ParamField path="path" type="string">
   The webhook path (e.g., "orders" creates /webhook/orders)
 </ParamField>
 
 <ParamField path="method" type="select" default="POST">
-  HTTP method filter: GET, POST, PUT, DELETE, PATCH, or ANY
+  HTTP method filter: GET, POST, PUT, DELETE, or ALL (ALL accepts any method)
+</ParamField>
+
+<ParamField path="response_mode" type="select" default="immediate">
+  How to respond to the caller. `immediate` returns 200 OK right away. `responseNode` waits for a downstream Webhook Response node to send the reply.
 </ParamField>
 
 <ParamField path="authentication" type="select" default="none">
-  Auth method: none, basic, bearer, api_key
+  Auth method: `none` (no auth) or `header` (require a matching header)
+</ParamField>
+
+<ParamField path="header_name" type="string" default="X-API-Key">
+  Header name to check (when authentication is `header`)
+</ParamField>
+
+<ParamField path="header_value" type="string">
+  Expected header value (when authentication is `header`)
 </ParamField>
 
 ### Webhook URL
@@ -118,7 +151,7 @@ https://your-domain.com/webhook/{path}
 ```json
 {
   "method": "POST",
-  "path": "/webhook/orders",
+  "path": "orders",
   "headers": {
     "content-type": "application/json",
     "user-agent": "curl/7.68.0"
@@ -126,22 +159,24 @@ https://your-domain.com/webhook/{path}
   "query": {
     "source": "website"
   },
-  "body": {
+  "body": "{\"order_id\": \"12345\", \"items\": [\"item1\", \"item2\"]}",
+  "json": {
     "order_id": "12345",
     "items": ["item1", "item2"]
-  },
-  "timestamp": "2024-01-15T10:30:00Z"
+  }
 }
 ```
 
+<Info>
+`body` holds the raw request text; `json` holds the parsed object when the request has a JSON content type. Reference either in downstream nodes, e.g. `{{webhookTrigger.json.order_id}}`.
+</Info>
+
 ### Authentication Options
 
-| Type | Description | Header |
-|------|-------------|--------|
-| None | No authentication | - |
-| Basic | Username:password base64 | `Authorization: Basic ...` |
-| Bearer | Token authentication | `Authorization: Bearer ...` |
-| API Key | Custom API key | `X-API-Key: ...` |
+| Type | Description |
+|------|-------------|
+| None | No authentication — any request is accepted |
+| Header | Require a matching header. Set the header name (default `X-API-Key`) and expected value |
 
 ---
 
@@ -151,17 +186,25 @@ Send a custom response back to the webhook caller.
 
 ### Parameters
 
-<ParamField path="statusCode" type="number" default="200">
-  HTTP status code to return
+<ParamField path="status_code" type="number" default="200">
+  HTTP status code to return (100-599)
 </ParamField>
 
 <ParamField path="body" type="string">
-  Response body. Supports template variables.
+  Response body. Supports template variables like `{{input.key}}` and `{{nodeType.key}}` resolved from connected node outputs. When left empty, the first connected output is returned as JSON.
 </ParamField>
 
-<ParamField path="contentType" type="select" default="application/json">
-  Content-Type header: application/json, text/plain, text/html
+<ParamField path="content_type" type="string" default="application/json">
+  Content-Type header (e.g., `application/json`, `text/plain`, `text/html`)
 </ParamField>
+
+<ParamField path="headers" type="json">
+  Additional response headers as a JSON object
+</ParamField>
+
+<Warning>
+For Webhook Response to actually reach the caller, set the Webhook Trigger's **Response Mode** to `responseNode`. In `immediate` mode the trigger returns 200 OK right away and any downstream response is ignored.
+</Warning>
 
 ### Example Responses
 
@@ -232,12 +275,18 @@ Forward data to multiple destinations:
 Create an AI endpoint:
 
 ```
-[Webhook Trigger] --> [OpenAI Chat] --> [Webhook Response]
+[Webhook Trigger] --> [AI Agent] --> [Webhook Response]
+                          ^
+                    [Chat Model]
 ```
 
-**Prompt:** `{{webhookTrigger.body.prompt}}`
+**Prompt:** `{{webhookTrigger.json.prompt}}`
 
-**Response:** `{{openaiChatModel.response}}`
+**Response:** `{{aiAgent.response}}`
+
+<Tip>
+Wire a chat model node (OpenAI, Anthropic, Gemini, and more — see [AI Models](/nodes/ai-models)) into the AI Agent's model handle to power the endpoint.
+</Tip>
 
 ---
 
@@ -324,7 +373,7 @@ In production, always enable authentication on webhooks that modify data.
   <Card title="Quick Start" icon="rocket" href="/quickstart">
     Build a webhook workflow
   </Card>
-  <Card title="Python Executor" icon="code" href="/nodes/schedulers">
-    Process webhook data
+  <Card title="Tools" icon="code" href="/nodes/tools">
+    Process webhook data with Python and other tools
   </Card>
 </CardGroup>

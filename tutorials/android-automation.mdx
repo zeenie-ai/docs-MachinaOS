@@ -14,7 +14,9 @@ MachinaOs can control Android devices for automation tasks like launching apps, 
 | **Local ADB** | Device connected via USB to your machine |
 | **Remote Relay** | Device connected via WebSocket relay server |
 
-## Step 1: Set Up Connection
+## Set Up Connection
+
+Android device connection is configured in the **Credentials Modal** (Android panel), not via a workflow node. Open Credentials and pick one of the two methods below.
 
 ### Option A: Local ADB
 
@@ -22,37 +24,21 @@ MachinaOs can control Android devices for automation tasks like launching apps, 
 2. Enable **USB Debugging**
 3. Connect device via USB
 4. Run `adb devices` to verify connection
+5. In the Credentials Modal, open the **Android** panel and choose **Local ADB** (ADB port forwarding is set up for you)
 
 ### Option B: Remote Relay
 
-1. Click the **Android icon** in the toolbar
-2. Enter your relay URL and API key in Credentials
-3. Click **Connect**
-4. Scan the QR code with the companion Android app
+1. Open the **Credentials Modal** and select the **Android** panel
+2. Click **Connect** to start the relay connection
+3. Scan the QR code with the companion Android app to pair your device
 
 <Info>
-Remote relay allows controlling devices anywhere with internet access.
+Remote relay allows controlling devices anywhere with internet access. The relay uses a two-state model: `connected` (relay WebSocket is up) versus `paired` (a device has scanned the QR and is ready to run actions). Android nodes require a **paired** device to execute.
 </Info>
 
-## Step 2: Add Android Device Setup
-
-1. Drag **Android Device Setup** from Android category
-2. Configure connection type:
-
-**Local ADB:**
-```
-Connection Type: Local ADB Device
-Device ID: [Select from dropdown]
-Auto Forward: true
-Port: 8888
-```
-
-**Remote:**
-```
-Connection Type: Remote WebSocket
-```
-
 ## Available Android Nodes
+
+MachinaOs ships 16 Android service nodes across monitoring, apps, automation, sensors, and media. Each one can run as a standalone workflow node or be connected to an AI agent's tools handle.
 
 ### System Monitoring
 | Node | Description |
@@ -76,6 +62,7 @@ Connection Type: Remote WebSocket
 | Audio Automation | Volume control, mute/unmute |
 | Device State | Airplane mode, brightness, screen |
 | Screen Control | Wake screen, timeout settings |
+| Airplane Mode | Airplane mode status and control |
 
 ### Sensors
 | Node | Description |
@@ -86,7 +73,7 @@ Connection Type: Remote WebSocket
 ### Media
 | Node | Description |
 |------|-------------|
-| Camera Control | Take photos, get camera info |
+| Camera | Take photos, get camera info |
 | Media Control | Playback control, volume |
 
 ## Example: Battery Alert Workflow
@@ -234,7 +221,7 @@ Use meaningful node names (F2 to rename) when building workflows with multiple A
 
 <CardGroup cols={2}>
   <Card title="Android Node Reference" icon="mobile" href="/nodes/android">
-    Full documentation for all 17 nodes
+    Full documentation for all 16 Android nodes
   </Card>
   <Card title="Webhooks" icon="webhook" href="/nodes/webhooks">
     Trigger Android actions via HTTP

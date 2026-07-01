@@ -11,14 +11,14 @@ Control when and how workflows start execution.
 
 | Node | Type | Purpose |
 |------|------|---------|
-| Workflow Trigger | Trigger | Manual workflow start |
-| Cron Scheduler | Trigger | Run on cron schedule |
-| Timer | Action | Delay execution |
-| Python Executor | Action | Run Python code |
+| Start | Trigger | Manual workflow start |
+| Cron Scheduler | Trigger (also AI tool) | Run on a recurring schedule |
+| Timer | Action (also AI tool) | Delay execution |
+| Python Executor | Action (also AI tool) | Run Python code |
 
 ---
 
-## Workflow Trigger
+## Start
 
 Manually start a workflow with the Run button.
 
@@ -28,75 +28,87 @@ Manually start a workflow with the Run button.
 - On-demand execution
 - Entry point for manual processes
 
-### Output
-
-```json
-{
-  "triggered_at": "2024-01-15T10:30:00Z",
-  "trigger_type": "manual"
-}
-```
-
 <Info>
-Every workflow needs at least one trigger node to start execution.
+Every workflow needs at least one trigger node (Start, Cron Scheduler, a Webhook, or another event trigger) to begin execution.
 </Info>
 
 ---
 
 ## Cron Scheduler
 
-Run workflows on a schedule using cron expressions.
+Run workflows on a recurring schedule. Instead of raw cron expressions, you pick a **frequency** and then set the matching interval or time-of-day fields. The Cron Scheduler is also a **dual-purpose node** -- it can be connected to an AI Agent's `input-tools` handle so agents can schedule delayed or recurring runs programmatically.
 
 ### Parameters
 
-<ParamField path="cronExpression" type="string" required>
-  Cron expression defining the schedule
+<ParamField path="frequency" type="select" default="minutes">
+  How often the schedule fires: `seconds`, `minutes`, `hours`, `days`, `weeks`, `months`, or `once`. The other fields below appear based on the frequency you choose.
 </ParamField>
 
-<ParamField path="timezone" type="string" default="UTC">
-  Timezone for schedule execution
+<ParamField path="interval" type="number" default="30">
+  Seconds between fires (5-59). Shown when frequency is `seconds`.
 </ParamField>
 
-### Cron Expression Format
+<ParamField path="interval_minutes" type="number" default="5">
+  Minutes between fires (1-59). Shown when frequency is `minutes`.
+</ParamField>
 
-```
-* * * * *
-│ │ │ │ │
-│ │ │ │ └── Day of week (0-7, Sun=0 or 7)
-│ │ │ └──── Month (1-12)
-│ │ └────── Day of month (1-31)
-│ └──────── Hour (0-23)
-└────────── Minute (0-59)
-```
+<ParamField path="interval_hours" type="number" default="1">
+  Hours between fires (1-23). Shown when frequency is `hours`.
+</ParamField>
 
-### Common Expressions
+<ParamField path="daily_time" type="select" default="09:00">
+  Time of day (HH:MM). Shown when frequency is `days`.
+</ParamField>
 
-| Expression | Description |
-|------------|-------------|
-| `* * * * *` | Every minute |
-| `*/5 * * * *` | Every 5 minutes |
-| `0 * * * *` | Every hour |
-| `0 0 * * *` | Daily at midnight |
-| `0 9 * * 1-5` | Weekdays at 9am |
-| `0 0 1 * *` | First day of month |
-| `0 12 * * 0` | Sundays at noon |
+<ParamField path="weekday" type="select" default="1">
+  Day of week for weekly schedules (0=Sunday … 6=Saturday). Shown when frequency is `weeks`.
+</ParamField>
+
+<ParamField path="weekly_time" type="select" default="09:00">
+  Time of day for weekly schedules. Shown when frequency is `weeks`.
+</ParamField>
+
+<ParamField path="month_day" type="select" default="1">
+  Day of month (1-28, or `L` for the last day). Shown when frequency is `months`.
+</ParamField>
+
+<ParamField path="timezone" type="select" default="UTC">
+  IANA timezone identifier (UTC, America/New_York, America/Los_Angeles, Europe/London, Europe/Berlin, Asia/Tokyo, Asia/Kolkata).
+</ParamField>
+
+### Frequency Examples
+
+| Frequency | Fields you set | Result |
+|-----------|----------------|--------|
+| `minutes` | interval_minutes = 5 | Every 5 minutes |
+| `hours` | interval_hours = 1 | Every hour |
+| `days` | daily_time = 09:00 | Daily at 9am |
+| `weeks` | weekday = 1, weekly_time = 09:00 | Every Monday at 9am |
+| `months` | month_day = 1, timezone = UTC | Monthly on the 1st |
+| `once` | — | Fires a single time (no repeat) |
 
 ### Output
 
 ```json
 {
-  "triggered_at": "2024-01-15T09:00:00Z",
-  "trigger_type": "cron",
-  "expression": "0 9 * * *",
-  "next_run": "2024-01-16T09:00:00Z"
+  "timestamp": "2026-06-15T09:00:00Z",
+  "iteration": 1,
+  "frequency": "days",
+  "timezone": "UTC",
+  "schedule": "Daily at 09:00",
+  "scheduled_time": "2026-06-15T09:00:00Z",
+  "triggered_at": "2026-06-15T09:00:00Z",
+  "waited_seconds": 86400,
+  "next_run": "Daily at 09:00",
+  "message": "Triggered after 1 day, will repeat: Daily at 09:00"
 }
 ```
 
 ### Example: Daily Report
 
 ```
-[Cron (0 9 * * *)] --> [HTTP Request] --> [AI Summary] --> [WhatsApp Send]
-                        (fetch data)                         (send report)
+[Cron (Daily at 09:00)] --> [HTTP Request] --> [AI Summary] --> [WhatsApp Send]
+                            (fetch data)                          (send report)
 ```
 
 ---
@@ -107,12 +119,12 @@ Add a delay between nodes. The Timer is a **dual-purpose node** -- it works both
 
 ### Parameters
 
-<ParamField path="delay" type="number" required>
-  Delay duration
+<ParamField path="duration" type="number" default="1">
+  Delay duration (1-86400).
 </ParamField>
 
 <ParamField path="unit" type="select" default="seconds">
-  Time unit: seconds, minutes, hours
+  Time unit: `seconds`, `minutes`, or `hours`.
 </ParamField>
 
 ### Use Cases
@@ -144,9 +156,11 @@ See [AI Tools](/nodes/tools#timer-tool) for the full tool schema and LLM interac
 
 ```json
 {
-  "delayed": true,
-  "duration_ms": 5000,
-  "completed_at": "2025-01-30T10:30:05Z"
+  "timestamp": "2026-06-15T10:30:05Z",
+  "elapsed_ms": 5000,
+  "duration": 5,
+  "unit": "seconds",
+  "message": "Timer completed after 5 seconds"
 }
 ```
 
@@ -207,9 +221,7 @@ else:
 ### Example: API Response Formatting
 
 ```python
-import json
-
-# Parse response
+# Parse response (json is available without importing)
 data = input_data.get("data", {})
 items = data.get("items", [])
 
@@ -229,11 +241,15 @@ output = {
 
 ### Available Libraries
 
-The Python executor includes common libraries:
-- `json` - JSON parsing
-- `datetime` - Date/time handling
-- `re` - Regular expressions
+The Python executor pre-injects a fixed set of names into the namespace:
 - `math` - Mathematical functions
+- `json` - JSON parsing
+- `datetime`, `timedelta` - Date/time handling
+- `re` - Regular expressions
+- `random` - Random number generation
+- `Counter`, `defaultdict` - Collections helpers
+
+Reference them directly (for example `math.sqrt(4)`). `import` statements are not available in the sandbox; for other modules use the **Process Manager** node instead.
 
 <Warning>
 Code runs in a sandboxed environment. File system and network access are restricted.
@@ -254,9 +270,9 @@ Code runs in a sandboxed environment. File system and network access are restric
 Deploy workflows with different schedules:
 
 ```
-Workflow 1: [Cron (daily)] --> [Daily Report]
-Workflow 2: [Cron (hourly)] --> [Hourly Check]
-Workflow 3: [Webhook] --> [On-Demand Action]
+Workflow 1: [Cron (frequency: days)]  --> [Daily Report]
+Workflow 2: [Cron (frequency: hours)] --> [Hourly Check]
+Workflow 3: [Webhook]                 --> [On-Demand Action]
 ```
 
 ---
@@ -276,7 +292,7 @@ After deployment, trigger nodes show their state:
 ## Tips
 
 <Tip>
-Test cron expressions at [crontab.guru](https://crontab.guru) before deploying.
+The Cron Scheduler uses a frequency dropdown -- pick `minutes`/`hours`/`days`/`weeks`/`months`/`once` and fill in the matching interval or time-of-day field. No raw cron expression is needed.
 </Tip>
 
 <Tip>
@@ -297,7 +313,7 @@ Cron schedules are in **UTC** by default. Set timezone if needed.
 
 <Accordion title="Cron not triggering">
   - Verify workflow is **deployed** (not just saved)
-  - Check cron expression syntax
+  - Check that the frequency and its interval/time fields are set
   - Ensure timezone is correct
   - Check server logs for errors
 </Accordion>
@@ -310,8 +326,8 @@ Cron schedules are in **UTC** by default. Set timezone if needed.
 </Accordion>
 
 <Accordion title="Timer not working">
-  - Ensure delay value is positive
-  - Check unit (seconds vs minutes)
+  - Ensure the duration is at least 1 (max 86400)
+  - Check the unit (seconds vs minutes vs hours)
   - Verify node is connected properly
 </Accordion>
 

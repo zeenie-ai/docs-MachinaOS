@@ -1,26 +1,31 @@
 ---
 title: AI Chat Models
-description: 10 LLM providers including OpenAI, Anthropic, Gemini, OpenRouter, Groq, Cerebras, xAI, DeepSeek, Kimi, and Mistral
+description: 11 chat-model nodes including OpenAI, Anthropic, Gemini, OpenRouter, Groq, Cerebras, DeepSeek, Kimi, Mistral, Ollama, and LM Studio
 ---
 
 # AI Chat Models
 
-MachinaOs supports **10 LLM providers** for chat completions, with models fetched dynamically from each provider's API. The backend uses a hybrid architecture: a native SDK layer in `server/services/llm/` for direct chat completions, and a LangChain + LangGraph path for agent tool-calling.
+MachinaOs ships **11 chat-model nodes**, with models fetched dynamically from each provider's API (and, for the local nodes, from your running server). The backend uses a hybrid architecture: a native SDK layer in `server/services/llm/` for direct chat completions, and a LangChain + LangGraph path for agent tool-calling.
 
-## Available Providers
+## Available Chat-Model Nodes
 
-| Provider | Models | Best For |
+| Node | Models | Best For |
 |----------|--------|----------|
-| OpenAI | GPT-4.x, GPT-5.x, o1, o3, o4-mini | General purpose, reasoning |
-| Anthropic | Claude 4.x Opus/Sonnet/Haiku | Coding, analysis, extended thinking |
-| Google Gemini | Gemini 2.5 Pro/Flash, Gemini 3 | Multimodal, long context (1M+) |
+| OpenAI | GPT-5.5/5.4/5.2, GPT-4.1/4.1-mini/nano, o3, o4-mini, GPT-4o/4o-mini | General purpose, reasoning |
+| Anthropic | Claude Fable 5, Opus 4.8/4.7, Sonnet 4.6, Haiku 4.5 | Coding, analysis, extended thinking |
+| Google Gemini | Gemini 3.5-flash, 3.1-pro/flash-lite, 3-flash, 2.5-pro/flash/flash-lite | Multimodal, long context (1M) |
 | OpenRouter | 200+ models | Access multiple providers via single API |
-| Groq | Llama 4 Scout, Qwen3, GPT-OSS | Ultra-fast inference (LPU) |
-| Cerebras | Llama, Qwen | Ultra-fast on wafer-scale hardware |
-| xAI | Grok models | OpenAI-compatible API |
-| DeepSeek | deepseek-chat, deepseek-reasoner | V3 with always-on Chain-of-Thought |
-| Kimi | kimi-k2.5, kimi-k2-thinking | 256K context, thinking mode |
-| Mistral | mistral-large, codestral | Up to 256K context |
+| Groq | Llama 3.3-70b, Llama 3.1-8b, GPT-OSS-120b/20b, Qwen3-32b | Ultra-fast inference (LPU) |
+| Cerebras | GPT-OSS-120b, Qwen-3-235b, GLM-4.7 | Ultra-fast on wafer-scale hardware |
+| DeepSeek | deepseek-v4-flash, deepseek-v4-pro | V4 with reasoning modes, up to 1M context |
+| Kimi | kimi-k2.6, kimi-k2.5, kimi-k2.7-code | 256K context, thinking on by default |
+| Mistral | mistral-large/medium/small-latest, codestral-latest | Up to 256K context |
+| Ollama | Whatever you've pulled locally | Local models, no API key |
+| LM Studio | Whatever you've loaded locally | Local models, no API key |
+
+<Info>
+xAI (Grok) is **not** a chat-model node. It is available only through the internal native-chat path (the shared OpenAI-compatible provider with `base_url=https://api.x.ai/v1`). The two nodes new since older docs are **Ollama** and **LM Studio**, which connect to a local server running on your machine.
+</Info>
 
 ## Adding API Keys
 
@@ -41,11 +46,13 @@ API keys are encrypted and stored locally. They're never sent to MachinaOs serve
 
 | Model | Best For |
 |-------|----------|
-| gpt-4o | Most capable, multimodal |
-| gpt-4-turbo | Fast, cost-effective GPT-4 |
-| o1 | Complex reasoning tasks |
+| gpt-5.5 | Most capable, up to ~1M context |
+| gpt-5.4 | High capability, long context |
+| gpt-5.2 | Capable, 400K context |
+| gpt-4.1 / 4.1-mini / 4.1-nano | Fast, 1M context |
 | o3 | Advanced reasoning |
 | o4-mini | Fast, efficient reasoning |
+| gpt-4o / gpt-4o-mini | Multimodal, cost-effective |
 
 ### Parameters
 
@@ -70,7 +77,7 @@ API keys are encrypted and stored locally. They're never sent to MachinaOs serve
 </ParamField>
 
 <ParamField path="reasoningEffort" type="select" default="medium">
-  For o-series models: minimal, low, medium, or high reasoning effort
+  For o-series and GPT-5 hybrid reasoning: low, medium, high (GPT-5 also supports xhigh)
 </ParamField>
 
 ### Output
@@ -78,8 +85,8 @@ API keys are encrypted and stored locally. They're never sent to MachinaOs serve
 ```json
 {
   "response": "The AI's response text",
-  "model": "gpt-4o",
-  "thinking": "Reasoning process (o-series only)",
+  "model": "gpt-5.5",
+  "thinking": "Reasoning process (o-series / GPT-5 only)",
   "usage": {
     "prompt_tokens": 50,
     "completion_tokens": 100,
@@ -96,9 +103,11 @@ API keys are encrypted and stored locally. They're never sent to MachinaOs serve
 
 | Model | Best For |
 |-------|----------|
-| claude-3-5-sonnet-20241022 | Best for coding and complex tasks |
-| claude-3-opus-20240229 | Most capable, detailed analysis |
-| claude-3-haiku-20240307 | Fast responses, simple tasks |
+| claude-opus-4-8 | Most capable, detailed analysis, 1M context |
+| claude-opus-4-7 | High capability, 1M context |
+| claude-sonnet-4-6 | Best for coding and complex tasks, 1M context |
+| claude-fable-5 | Capable, 1M context |
+| claude-haiku-4-5 | Fast responses, simple tasks, 200K context |
 
 ### Parameters
 
@@ -123,7 +132,7 @@ API keys are encrypted and stored locally. They're never sent to MachinaOs serve
 </ParamField>
 
 <ParamField path="thinkingEnabled" type="boolean" default="false">
-  Enable extended thinking mode (Claude 3.5 Sonnet, Claude 3 Opus)
+  Enable extended thinking mode (all Claude 4.x models)
 </ParamField>
 
 <ParamField path="thinkingBudget" type="number" default="2048">
@@ -138,10 +147,14 @@ Claude's extended thinking mode shows the model's reasoning process:
 {
   "response": "Claude's final response",
   "thinking": "Let me analyze this step by step...",
-  "model": "claude-3-5-sonnet-20241022",
+  "model": "claude-opus-4-8",
   "stop_reason": "end_turn"
 }
 ```
+
+<Info>
+Anthropic model IDs use hyphens, not dots (`claude-sonnet-4-6`, not `claude-sonnet-4.6`).
+</Info>
 
 <Warning>
 When thinking is enabled, `max_tokens` must be greater than `thinkingBudget`. Temperature is automatically set to 1.
@@ -155,9 +168,12 @@ When thinking is enabled, `max_tokens` must be greater than `thinkingBudget`. Te
 
 | Model | Best For |
 |-------|----------|
-| gemini-2.5-pro | Most intelligent, complex tasks |
-| gemini-2.5-flash | Fast, frontier performance |
-| gemini-2.0-flash-thinking | Reasoning with thinking output |
+| gemini-3.5-flash | Fast, frontier performance, 1M context |
+| gemini-3.1-pro-preview | Most intelligent, complex tasks |
+| gemini-3.1-flash-lite | Fast, cost-effective |
+| gemini-3-flash-preview | Fast, multimodal |
+| gemini-2.5-pro | Complex tasks, thinking support |
+| gemini-2.5-flash / 2.5-flash-lite | Fast, thinking support |
 
 ### Parameters
 
@@ -182,7 +198,7 @@ When thinking is enabled, `max_tokens` must be greater than `thinkingBudget`. Te
 </ParamField>
 
 <ParamField path="thinkingEnabled" type="boolean" default="false">
-  Enable thinking mode (Gemini 2.5 models, Flash Thinking)
+  Enable thinking mode (Gemini 3.x and 2.5 models)
 </ParamField>
 
 ### Output
@@ -191,7 +207,7 @@ When thinking is enabled, `max_tokens` must be greater than `thinkingBudget`. Te
 {
   "response": "Gemini's response",
   "thinking": "Reasoning process (when enabled)",
-  "model": "gemini-2.5-pro"
+  "model": "gemini-3.5-flash"
 }
 ```
 
@@ -214,11 +230,11 @@ Models are grouped by cost in the dropdown:
 - **Paid models**: Standard pricing per provider
 
 Popular models include:
-- `openai/gpt-4o`
-- `anthropic/claude-3.5-sonnet`
-- `google/gemini-2.5-pro`
-- `meta-llama/llama-3.1-405b-instruct`
-- `mistralai/mixtral-8x22b-instruct`
+- `openai/gpt-5.5`
+- `anthropic/claude-sonnet-4.6` (the OpenRouter default)
+- `google/gemini-3.5-flash`
+- `meta-llama/llama-3.3-70b-instruct`
+- `mistralai/mistral-large-latest`
 
 ### Parameters
 
@@ -243,7 +259,7 @@ Popular models include:
 ```json
 {
   "response": "Model's response",
-  "model": "openai/gpt-4o",
+  "model": "openai/gpt-5.5",
   "provider": "openrouter"
 }
 ```
@@ -258,11 +274,11 @@ Groq provides ultra-fast inference on custom LPU (Language Processing Unit) hard
 
 | Model | Best For |
 |-------|----------|
-| llama-3.1-70b-versatile | General purpose, fast |
+| llama-3.3-70b-versatile | General purpose, fast |
 | llama-3.1-8b-instant | Ultra-fast, simple tasks |
-| mixtral-8x7b-32768 | Long context, reasoning |
-| qwen3-32b | Reasoning with parsed output |
-| qwq-32b | Advanced reasoning |
+| openai/gpt-oss-120b | Large open model, long output |
+| openai/gpt-oss-20b | Fast open model |
+| qwen/qwen3-32b | Reasoning with parsed/hidden output |
 
 ### Parameters
 
@@ -283,18 +299,18 @@ Groq provides ultra-fast inference on custom LPU (Language Processing Unit) hard
 </ParamField>
 
 <ParamField path="reasoningFormat" type="select" default="parsed">
-  For Qwen3/QwQ models: "parsed" returns reasoning, "hidden" returns only final answer
+  For Qwen3 models: "parsed" returns reasoning, "hidden" returns only final answer
 </ParamField>
 
 ### Reasoning Output
 
-Qwen3 and QwQ models support reasoning output:
+Qwen3-32b supports reasoning output:
 
 ```json
 {
   "response": "The final answer",
   "thinking": "Step-by-step reasoning process",
-  "model": "qwen3-32b"
+  "model": "qwen/qwen3-32b"
 }
 ```
 
@@ -308,9 +324,9 @@ Cerebras provides ultra-fast inference on custom wafer-scale AI hardware.
 
 | Model | Best For |
 |-------|----------|
-| llama3.1-8b | Fast, efficient |
-| llama3.1-70b | Capable, balanced |
-| qwen-2.5-32b | Reasoning tasks |
+| gpt-oss-120b | Capable, balanced (the default) |
+| qwen-3-235b | Reasoning tasks (budget thinking) |
+| zai-glm-4.7 | General purpose |
 
 ### Parameters
 
@@ -335,53 +351,26 @@ Cerebras provides ultra-fast inference on custom wafer-scale AI hardware.
 ```json
 {
   "response": "Cerebras model response",
-  "model": "llama3.1-70b"
+  "model": "gpt-oss-120b"
 }
 ```
 
 ---
 
-## xAI (Grok)
-
-xAI's Grok models via their OpenAI-compatible API. The backend routes xAI through the shared `OpenAIProvider` with `base_url=https://api.x.ai/v1`.
-
-### Models
-
-| Model | Best For |
-|-------|----------|
-| grok-beta | Real-time knowledge, conversational |
-| grok-vision-beta | Multimodal with image understanding |
-
-### Parameters
-
-<ParamField path="model" type="select" required>
-  Grok model to use
-</ParamField>
-
-<ParamField path="prompt" type="string" required>
-  The message to send
-</ParamField>
-
-<ParamField path="temperature" type="slider" default="0.7">
-  Randomness (0-2)
-</ParamField>
-
-<ParamField path="maxTokens" type="number" default="4096">
-  Maximum response length
-</ParamField>
-
----
-
 ## DeepSeek
 
-DeepSeek V3 models with optional always-on Chain-of-Thought reasoning.
+DeepSeek V4 models with reasoning support and long context.
 
 ### Models
 
 | Model | Best For |
 |-------|----------|
-| deepseek-chat | General purpose, fast |
-| deepseek-reasoner | Always-on Chain-of-Thought reasoning (128K context, up to 64K output) |
+| deepseek-v4-flash | General purpose, fast, up to 1M context, up to 64K output |
+| deepseek-v4-pro | Higher capability, up to 1M context, up to 64K output |
+
+<Info>
+The legacy `deepseek-chat` and `deepseek-reasoner` aliases still resolve (scheduled for deprecation 2026-07-24). `deepseek-reasoner` returns always-on reasoning in the `thinking` field.
+</Info>
 
 ### Parameters
 
@@ -398,37 +387,34 @@ DeepSeek V3 models with optional always-on Chain-of-Thought reasoning.
 </ParamField>
 
 <ParamField path="maxTokens" type="number" default="8192">
-  Maximum response length (up to 64K for reasoner)
+  Maximum response length (up to 64K)
 </ParamField>
 
-### Reasoner Output
+### Reasoning Output
 
-The `deepseek-reasoner` model always returns reasoning in the `reasoning_content` field. MachinaOs maps this to the standard `thinking` field:
+DeepSeek's reasoning is mapped to the standard `thinking` field:
 
 ```json
 {
   "response": "The final answer",
-  "thinking": "Step-by-step reasoning (reasoner only)",
-  "model": "deepseek-reasoner"
+  "thinking": "Step-by-step reasoning",
+  "model": "deepseek-v4-pro"
 }
 ```
-
-<Info>
-DeepSeek Reasoner's thinking is always on and cannot be disabled.
-</Info>
 
 ---
 
 ## Kimi (Moonshot AI)
 
-Moonshot's Kimi models with 256K context window and optional thinking mode.
+Moonshot's Kimi models with 256K context window and thinking on by default.
 
 ### Models
 
 | Model | Best For |
 |-------|----------|
+| kimi-k2.6 | General purpose, 256K context, 32K output |
 | kimi-k2.5 | General purpose, 256K context, 96K output |
-| kimi-k2-thinking | Deep reasoning tasks |
+| kimi-k2.7-code | Code tasks, 256K context, 96K output |
 
 ### Parameters
 
@@ -445,7 +431,7 @@ Moonshot's Kimi models with 256K context window and optional thinking mode.
 </ParamField>
 
 <Warning>
-Kimi models use fixed temperatures: 0.6 for instant (k2.5), 1.0 for thinking (k2-thinking). User-set temperature is ignored for compatibility with LangGraph agent mode.
+Kimi models use a fixed temperature of 0.6. User-set temperature is ignored. Thinking is on by default but explicitly disabled in tool-calling agent mode for compatibility.
 </Warning>
 
 ### Output
@@ -453,8 +439,8 @@ Kimi models use fixed temperatures: 0.6 for instant (k2.5), 1.0 for thinking (k2
 ```json
 {
   "response": "Kimi response",
-  "thinking": "Reasoning (k2-thinking only)",
-  "model": "kimi-k2.5"
+  "thinking": "Reasoning (when thinking is active)",
+  "model": "kimi-k2.6"
 }
 ```
 
@@ -468,9 +454,10 @@ Mistral AI models including Large, Small, and Codestral for code tasks.
 
 | Model | Best For |
 |-------|----------|
-| mistral-large-latest | Most capable, general purpose |
+| mistral-large-latest | Most capable, general purpose, 256K context |
+| mistral-medium-latest | Balanced, 256K context |
 | mistral-small-latest | Fast, cost-effective |
-| codestral-latest | Code generation and completion |
+| codestral-latest | Code generation and completion, 256K context |
 
 ### Parameters
 
@@ -505,14 +492,74 @@ Mistral models support up to 256K context but do not have a thinking mode. Tempe
 
 ---
 
+## Ollama (Local)
+
+Run models locally through an [Ollama](https://ollama.com) server. No API key is needed; instead you point MachinaOs at your running server's URL in the Credentials Modal (default `http://localhost:11434/v1`).
+
+### Models
+
+The dropdown reflects **whatever you have pulled** into Ollama (e.g. `qwen2.5`, `llama3.x`, `phi-3`, `deepseek-r1`). MachinaOs probes your running server via the official Ollama Python SDK and reads per-model context length directly. When the server is offline the list is empty, cueing you to start it.
+
+### Parameters
+
+<ParamField path="model" type="select" required>
+  A model loaded in your local Ollama server
+</ParamField>
+
+<ParamField path="prompt" type="string" required>
+  The message to send
+</ParamField>
+
+<ParamField path="temperature" type="slider" default="0.7">
+  Randomness (0-2)
+</ParamField>
+
+<ParamField path="maxTokens" type="number" default="4096">
+  Maximum response length (per-model, roughly context / 4, capped at 4096)
+</ParamField>
+
+<Info>
+Traffic stays on your machine. MachinaOs sends requests to your local server URL, never to a cloud API.
+</Info>
+
+---
+
+## LM Studio (Local)
+
+Run models locally through the [LM Studio](https://lmstudio.ai) server. Like Ollama, no API key is required; you set your local server URL in the Credentials Modal (default `http://localhost:1234/v1`).
+
+### Models
+
+The dropdown reflects **whatever you have loaded** in the LM Studio UI. MachinaOs probes the running server via the official LM Studio Python SDK and reads typed model info (context length, tool-use support, vision).
+
+### Parameters
+
+<ParamField path="model" type="select" required>
+  A model loaded in your LM Studio server
+</ParamField>
+
+<ParamField path="prompt" type="string" required>
+  The message to send
+</ParamField>
+
+<ParamField path="temperature" type="slider" default="0.7">
+  Randomness (0-2)
+</ParamField>
+
+<ParamField path="maxTokens" type="number" default="4096">
+  Maximum response length (per-model, roughly context / 4, capped at 4096)
+</ParamField>
+
+---
+
 ## Native SDK vs LangChain Path
 
 MachinaOs uses a hybrid architecture for LLM access:
 
-- **Native SDK path** (`server/services/llm/`): Used by `execute_chat()` for direct chat completions. Returns a normalized `LLMResponse` dataclass across all providers. Bypasses LangChain for OpenAI, Anthropic, Gemini, OpenRouter, xAI, DeepSeek, Kimi, and Mistral.
-- **LangChain path**: Used by `execute_agent()` and `execute_chat_agent()` for tool-calling agents via LangGraph. All 10 providers supported.
+- **Native SDK path** (`server/services/llm/`): Used by `execute_chat()` for direct chat completions. Returns a normalized `LLMResponse` across providers. This path also serves the OpenAI-compatible providers including DeepSeek, Kimi, Mistral, xAI, Ollama, and LM Studio.
+- **LangChain path**: Used by `execute_agent()` and `execute_chat_agent()` for tool-calling agents via LangGraph. All chat-model providers are supported (Groq and Cerebras use this path for direct chat too).
 
-OpenAI-compatible providers (xAI, DeepSeek, Kimi, Mistral) reuse the `OpenAIProvider` class with `base_url` read from `server/config/llm_defaults.json`. Adding a new OpenAI-compatible provider is a pure config change with no new code.
+OpenAI-compatible providers (DeepSeek, Kimi, Mistral, xAI, Ollama, LM Studio) reuse the `OpenAIProvider` class with `base_url` read from `server/config/llm_defaults.json`. For the local nodes (Ollama, LM Studio) the `base_url` resolves to your machine's server URL, so traffic never leaves your host. Adding a new OpenAI-compatible provider is largely a config change.
 
 ---
 
@@ -522,13 +569,13 @@ Several providers support extended thinking or reasoning modes that show the mod
 
 | Provider | Models | Parameter |
 |----------|--------|-----------|
-| Claude | Claude 4.x with thinking | thinkingBudget (tokens) |
-| Gemini | 2.5 Pro/Flash, Gemini 3 | thinkingBudget (tokens) or thinking_level |
-| OpenAI | o1, o3, o4 series, GPT-5 hybrid | reasoningEffort (low/medium/high) |
+| Claude | Claude 4.x models | thinkingBudget (tokens) |
+| Gemini | Gemini 3.x, 2.5 Pro/Flash | thinkingBudget (tokens) |
+| OpenAI | o3, o4-mini, GPT-5.x hybrid | reasoningEffort (low/medium/high; GPT-5 also xhigh) |
 | Groq | Qwen3-32b | reasoningFormat (parsed/hidden) |
-| Cerebras | Qwen-3-235b | reasoningFormat (parsed/hidden) |
-| DeepSeek | deepseek-reasoner | Always on (not configurable) |
-| Kimi | kimi-k2-thinking | On by default |
+| Cerebras | Qwen-3-235b | budget thinking |
+| DeepSeek | deepseek-v4 (legacy reasoner alias) | reasoning modes |
+| Kimi | kimi-k2.6 / k2.5 / k2.7-code | On by default (off in agent mode) |
 
 ### Using Thinking Output
 
@@ -543,13 +590,15 @@ The `thinking` field is available in the node output for downstream nodes:
 
 ## Comparing Providers
 
-| Feature | OpenAI | Claude | Gemini | OpenRouter | Groq | Cerebras | xAI | DeepSeek | Kimi | Mistral |
-|---------|--------|--------|--------|------------|------|----------|-----|----------|------|---------|
-| Speed | Fast | Medium | Fast | Varies | Ultra-fast | Ultra-fast | Fast | Fast | Fast | Fast |
-| Reasoning | o-series, GPT-5 | Extended thinking | Thinking mode | Model-dependent | Qwen3 | Qwen-3 | - | Always-on CoT | K2-thinking | - |
-| Context Window | 128K-1M | 200K-1M | 1M+ | Varies | 32K-131K | 128K | 128K | 128K | 256K | 256K |
-| Multimodal | Yes | Yes | Yes | Model-dependent | No | No | Yes | No | No | No |
-| JSON Mode | Yes | No | No | Model-dependent | No | No | Yes | Yes | Yes | Yes |
+| Feature | OpenAI | Claude | Gemini | OpenRouter | Groq | Cerebras | DeepSeek | Kimi | Mistral |
+|---------|--------|--------|--------|------------|------|----------|----------|------|---------|
+| Speed | Fast | Medium | Fast | Varies | Ultra-fast | Ultra-fast | Fast | Fast | Fast |
+| Reasoning | o-series, GPT-5 | Extended thinking | Thinking mode | Model-dependent | Qwen3 | Qwen-3 | v4 reasoning | On by default | - |
+| Context Window | 128K-1M | 200K-1M | 1M | Varies | 131K | 131K | up to 1M | 256K | up to 256K |
+| Multimodal | Yes | Yes | Yes | Model-dependent | No | No | No | No | No |
+| JSON Mode | Yes | No | No | Model-dependent | No | No | Yes | Yes | Yes |
+
+Ollama and LM Studio are local nodes: capabilities depend entirely on the model you have pulled/loaded.
 
 ---
 
@@ -570,7 +619,7 @@ Temperature: 0
 
 ### Complex Reasoning (with thinking)
 ```
-Model: claude-3-5-sonnet
+Model: claude-sonnet-4-6
 Thinking Enabled: true
 Thinking Budget: 4096
 Prompt: Analyze this code and explain the bug: {{input.code}}

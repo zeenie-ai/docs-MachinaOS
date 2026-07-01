@@ -11,20 +11,26 @@ Automate WhatsApp messaging and multi-platform social communication.
 
 | Node | Type | Purpose |
 |------|------|---------|
-| WhatsApp Connect | Action | Check connection status |
+| WhatsApp Send | Action / AI Tool | Send text, media, location, contact, or sticker messages |
+| WhatsApp DB | Action / AI Tool | Query chats, contacts, groups, and newsletter channels |
 | WhatsApp Receive | Trigger | Wait for incoming messages |
-| WhatsApp Send | Action | Send messages |
+
+<Info>
+WhatsApp Send and WhatsApp DB are dual-purpose: they work as standalone workflow nodes **and** as AI Agent tools when connected to an agent's tools handle.
+</Info>
 
 ## Setup Requirements
 
-1. WhatsApp service running (included in Docker setup)
+1. WhatsApp service running (starts automatically with `machina start`)
 2. WhatsApp account for pairing
 3. Scan QR code to link device
 
 ### Connecting
 
-1. Click **Android/WhatsApp icon** in toolbar
-2. Scan displayed QR code with WhatsApp mobile app
+There is no "connect" workflow node. Pairing is managed from the Credentials panel:
+
+1. Open the **Credentials** modal and select the **WhatsApp** panel
+2. Scan the displayed QR code with your WhatsApp mobile app
 3. Go to WhatsApp > Settings > Linked Devices > Link a Device
 
 ---
@@ -35,32 +41,44 @@ Trigger node that fires when messages arrive.
 
 ### Parameters
 
-<ParamField path="messageTypeFilter" type="select" default="all">
+<ParamField path="message_type_filter" type="select" default="all">
   Filter by message type: all, text, image, video, audio, document, location, contact
 </ParamField>
 
 <ParamField path="filter" type="select" default="all">
-  Sender filter mode
+  Sender filter mode: all, self, any_contact, contact, group, channel, keywords
 </ParamField>
 
 <ParamField path="phone_number" type="string">
-  Specific phone number (when filter = contact)
+  Specific phone number, digits only, no + prefix (when filter = contact)
 </ParamField>
 
 <ParamField path="group_id" type="select">
-  Specific group (when filter = group)
+  Specific group JID (when filter = group)
+</ParamField>
+
+<ParamField path="sender_number" type="string">
+  Optional: filter group messages to a specific member (when filter = group)
+</ParamField>
+
+<ParamField path="channel_jid" type="select">
+  Newsletter channel JID; leave empty to match any channel (when filter = channel)
 </ParamField>
 
 <ParamField path="keywords" type="string">
-  Comma-separated keywords (when filter = keywords)
+  Comma-separated keywords, case-insensitive (when filter = keywords)
 </ParamField>
 
-<ParamField path="forwardedFilter" type="select" default="all">
+<ParamField path="forwarded_filter" type="select" default="all">
   Forwarded message handling: all, only_forwarded, ignore_forwarded
 </ParamField>
 
-<ParamField path="ignoreOwnMessages" type="boolean" default="true">
+<ParamField path="ignore_own_messages" type="boolean" default="true">
   Skip messages sent by yourself
+</ParamField>
+
+<ParamField path="include_media_data" type="boolean" default="false">
+  Download base64 media data with the event
 </ParamField>
 
 ### Filter Options
@@ -68,9 +86,11 @@ Trigger node that fires when messages arrive.
 | Filter | Description |
 |--------|-------------|
 | All Messages | Receive everything |
+| From Self | Notes-to-self chat only |
 | From Any Contact | Non-group messages only |
 | From Specific Contact | Match phone number |
-| From Specific Group | Match group |
+| From Specific Group | Match group (optionally a specific member) |
+| From Channel | Match newsletter channel |
 | Contains Keywords | Match keywords in message |
 
 ### Output
@@ -119,67 +139,120 @@ Keywords: help, support, question
 
 ## WhatsApp Send
 
-Send messages to contacts or groups.
+Send messages to yourself, individual contacts, groups, or newsletter channels. Works as a workflow node or an AI Agent tool.
 
 ### Parameters
 
-<ParamField path="phone_number" type="string" required>
-  Recipient phone number with country code (e.g., +1234567890)
+<ParamField path="recipient_type" type="select" default="self">
+  Where to send: self (connected phone), phone (individual), group, or channel (newsletter)
 </ParamField>
 
-<ParamField path="message" type="string" required>
-  Message content. Supports template variables.
+<ParamField path="phone" type="string">
+  Recipient phone number, digits only, no + prefix (when recipient_type = phone)
 </ParamField>
+
+<ParamField path="group_id" type="select">
+  Group JID, format 123456789@g.us (when recipient_type = group)
+</ParamField>
+
+<ParamField path="channel_jid" type="select">
+  Newsletter channel JID, format 120363...@newsletter; admin/owner role required (when recipient_type = channel)
+</ParamField>
+
+<ParamField path="message_type" type="select" default="text">
+  Type of message: text, image, video, audio, document, sticker, location, contact. Channels only support text, image, video, audio, document.
+</ParamField>
+
+<ParamField path="message" type="string">
+  Text content (when message_type = text). Supports template variables.
+</ParamField>
+
+<ParamField path="format_markdown" type="boolean" default="true">
+  Convert markdown (bold, italic, code, lists) to WhatsApp-native formatting (when message_type = text)
+</ParamField>
+
+<ParamField path="media_source" type="select" default="base64">
+  Source of media data: base64, file, or url (for image / video / audio / document / sticker)
+</ParamField>
+
+<ParamField path="media_url" type="string">
+  HTTPS URL to download media from (when media_source = url)
+</ParamField>
+
+<ParamField path="caption" type="string">
+  Optional caption for image, video, or document
+</ParamField>
+
+<Tip>
+Location messages use `latitude` / `longitude` / `location_name` / `address`. Contact messages use `contact_name` / `vcard`. Quote a message with `is_reply` + `reply_message_id`.
+</Tip>
 
 ### Output
 
 ```json
 {
-  "success": true,
   "message_id": "XYZ789",
-  "timestamp": "2024-01-15T10:35:00Z"
+  "sent": true
 }
 ```
 
 ### Example: Auto-Reply
 
 ```
-Phone Number: {{whatsappReceive.sender_phone}}
+Recipient Type: phone
+Phone: {{whatsappReceive.sender_phone}}
 Message: Thanks for your message! I'll get back to you soon.
 ```
 
 ### Example: Forward to Admin
 
 ```
-Phone Number: +1987654321
+Recipient Type: phone
+Phone: 1987654321
 Message: New message from {{whatsappReceive.push_name}}: {{whatsappReceive.text}}
 ```
 
 ---
 
-## WhatsApp Connect
+## WhatsApp DB
 
-Check WhatsApp connection status and device info.
+Query the WhatsApp database: chat history, contacts, groups, and newsletter channels. Works as a workflow node or an AI Agent tool.
 
-### Output
+### Parameters
 
-```json
-{
-  "connected": true,
-  "device_id": "abc123",
-  "phone_number": "+1234567890",
-  "platform": "android",
-  "push_name": "My Business"
-}
+<ParamField path="operation" type="select" default="chat_history">
+  Operation to perform (see table below)
+</ParamField>
+
+The remaining fields depend on the selected operation (e.g. `phone`, `group_id`, `query`, `channel_jid`, `limit`, `offset`, `include_media_data`).
+
+### Operations
+
+| Operation | Purpose |
+|-----------|---------|
+| `chat_history` | Retrieve messages from an individual or group chat (with pagination and optional media download) |
+| `search_groups` | Search groups by name |
+| `get_group_info` | Get group details with participant names and phone numbers |
+| `get_contact_info` | Get full contact info (name, phone, profile picture) |
+| `list_contacts` | List all contacts with saved names |
+| `check_contacts` | Check WhatsApp registration status for phone numbers |
+| `list_channels` | List subscribed newsletter channels |
+| `get_channel_info` | Get channel details (name, description, subscribers) |
+| `channel_messages` | Get channel message history with filters and pagination |
+| `channel_stats` | Get channel subscriber/view statistics |
+| `channel_follow` / `channel_unfollow` | Follow or unfollow a newsletter channel |
+| `channel_create` | Create a new newsletter channel |
+| `channel_mute` | Mute or unmute a channel |
+| `channel_mark_viewed` | Mark channel messages as viewed |
+| `newsletter_react` | React to a channel message with an emoji |
+| `newsletter_live_updates` | Subscribe to live view/reaction counts |
+| `contact_profile_pic` | Get profile picture for a contact or group |
+
+### Example: Look Up a Contact
+
 ```
-
-### Use Case
-
-Check connection before sending:
-
-```
-[WhatsApp Connect] --> [Python Executor] --> [WhatsApp Send]
-                           (check status)
+Operation: get_contact_info
+Contact Phone: 1234567890
 ```
 
 ---
@@ -200,6 +273,7 @@ Be helpful and professional.
 
 **Send Config:**
 ```
+Recipient Type: phone
 Phone: {{whatsappReceive.sender_phone}}
 Message: {{openaiChatModel.response}}
 ```
@@ -263,13 +337,11 @@ Respect WhatsApp's terms of service. Don't send spam or bulk unsolicited message
 ## Troubleshooting
 
 <Accordion title="QR code not appearing">
-  Check WhatsApp service status:
+  The WhatsApp service (whatsapp-rpc) starts automatically with `machina start`
+  and listens on port 9400. Restart all services if the QR code doesn't appear:
   ```bash
-  docker-compose logs whatsapp
-  ```
-  Restart if needed:
-  ```bash
-  docker-compose restart whatsapp
+  npx machina stop
+  npx machina start
   ```
 </Accordion>
 
