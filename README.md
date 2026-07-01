@@ -2,7 +2,7 @@
 
 Official documentation for [MachinaOS](https://github.com/zeenie-ai/MachinaOS) - an open-source, plugin-first workflow automation platform with AI agents, a React Flow canvas, and a Temporal-backed execution engine.
 
-**140+ nodes across 25+ categories** | **11 chat-model providers** | **Dracula theme**
+**110+ nodes across 26 categories** | **11 chat-model providers** | **Dracula theme**
 
 ## Live Docs
 
@@ -32,7 +32,7 @@ Navigation is defined in `docs.json`.
 
 ### Node Catalog (`nodes/`)
 
-The live node count is large (~140 plugin folders across 25+ categories) and grows as plugins are added, so the docs group nodes by category rather than pinning a fixed total.
+The live node count is large (~118 node plugins across 26 categories) and grows as plugins are added, so the docs group nodes by category rather than pinning a fixed total.
 
 | Page | Covers |
 |------|--------|
