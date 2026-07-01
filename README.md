@@ -1,8 +1,8 @@
 # MachinaOs Documentation
 
-Official documentation for [MachinaOS](https://github.com/trohitg/MachinaOS) - an open-source workflow automation platform with AI agents, React Flow, and n8n-inspired architecture.
+Official documentation for [MachinaOS](https://github.com/zeenie-ai/MachinaOS) - an open-source, plugin-first workflow automation platform with AI agents, a React Flow canvas, and a Temporal-backed execution engine.
 
-**60 nodes** | **6 AI providers** | **Dracula theme**
+**140+ nodes across 25+ categories** | **11 chat-model providers** | **Dracula theme**
 
 ## Live Docs
 
@@ -10,96 +10,90 @@ https://docs.zeenie.xyz/
 
 ## Local Development
 
-```bash
-# Install Mintlify CLI
-npm install -g mintlify
+Built with [Mintlify](https://mintlify.com). The `mint` CLI serves the site from `docs.json`.
 
-# Run local dev server
-mintlify dev
+```bash
+# Install the Mintlify CLI
+npm install -g mint
+
+# Run the local dev server (from this folder)
+mint dev
 ```
 
-The docs will be available at http://localhost:3000
+The docs are served at http://localhost:3000. (The legacy `mintlify` CLI still works as an alias: `mintlify dev`.)
 
 ## Documentation Coverage
 
-### Node Catalog (60 nodes)
+Navigation is defined in `docs.json`.
 
-| Category | Count | Page |
-|----------|-------|------|
-| AI Models | 6 | [ai-models.mdx](nodes/ai-models.mdx) |
-| AI Agents | 3 | [ai-agent.mdx](nodes/ai-agent.mdx) |
-| AI Skills | 10 | [skills.mdx](nodes/skills.mdx) |
-| AI Tools | 4 | [tools.mdx](nodes/tools.mdx) |
-| WhatsApp | 3 | [whatsapp.mdx](nodes/whatsapp.mdx) |
-| Android | 17 | [android.mdx](nodes/android.mdx) |
-| Documents | 6 | [documents.mdx](nodes/documents.mdx) |
-| Webhooks | 5 | [webhooks.mdx](nodes/webhooks.mdx) |
-| Location | 3 | [android.mdx](nodes/android.mdx) |
-| Code | 2 | [schedulers.mdx](nodes/schedulers.mdx) |
-| Workflow | 1 | - |
+### Getting Started
 
-### AI Providers
+`introduction` · `installation` · `quickstart` · `architecture`
 
-- **OpenAI** - GPT-4o, GPT-4 Turbo, o1, o3, o4-mini
-- **Anthropic** - Claude 3.5 Sonnet, Claude 3 Opus, Claude 3 Haiku
-- **Google** - Gemini 2.5 Pro, Gemini 2.5 Flash, Gemini 2.0 Flash Thinking
-- **OpenRouter** - 200+ models via unified API
-- **Groq** - Llama, Mixtral, Qwen (ultra-fast)
-- **Cerebras** - Llama, Qwen (ultra-fast)
+### Node Catalog (`nodes/`)
+
+The live node count is large (~140 plugin folders across 25+ categories) and grows as plugins are added, so the docs group nodes by category rather than pinning a fixed total.
+
+| Page | Covers |
+|------|--------|
+| [overview](nodes/overview.mdx) | How the palette is organized; all node categories |
+| [ai-models](nodes/ai-models.mdx) | 11 chat-model providers: OpenAI, Anthropic, Gemini, OpenRouter, Groq, Cerebras, DeepSeek, Kimi, Mistral, Ollama, LM Studio |
+| [ai-agent](nodes/ai-agent.mdx) | AI Agent, Chat Agent (Zeenie), memory, and the 16 specialized agents |
+| [skills](nodes/skills.mdx) | Master Skill + the built-in skill library |
+| [tools](nodes/tools.mdx) | AI tool nodes (calculator, time, search, write-todos, agent builder, dual-purpose tools) |
+| [whatsapp](nodes/whatsapp.mdx) | WhatsApp send / query / receive |
+| [android](nodes/android.mdx) | 16 Android service nodes |
+| [documents](nodes/documents.mdx) | RAG pipeline: scrape / download / parse / chunk / embed / vector store |
+| [webhooks](nodes/webhooks.mdx) | Webhook, HTTP, and trigger nodes |
+| [schedulers](nodes/schedulers.mdx) | Timer + cron scheduler |
+
+Other node families (Telegram, Twitter/X, Social, Email, Stripe, Browser, Scraper, Filesystem, Code executors, Proxy, Location, Google Workspace) are introduced on the [overview](nodes/overview.mdx) page. For the authoritative, always-current model list per provider, see [ai-models](nodes/ai-models.mdx).
+
+### Tutorials (`tutorials/`)
+
+`first-workflow` · `ai-agent-workflow` · `whatsapp-automation` · `android-automation`
+
+### Deployment (`deployment/`)
+
+- [production](deployment/production.mdx) - recommended path (`machina deploy up --provider gcp`: cloud CLI + Terraform + single-port `machina serve` under systemd)
+- [docker](deployment/docker.mdx) - legacy / self-host Docker Compose reference
+
+### FAQ
+
+`faq`
 
 ## Structure
 
 ```
 docs-MachinaOs/
-├── docs.json           # Mintlify config (Dracula theme)
-├── introduction.mdx    # Home page
-├── installation.mdx    # Setup guide
-├── quickstart.mdx      # Quick start tutorial
-├── faq.mdx             # FAQ
-├── tutorials/          # Step-by-step guides
-│   ├── first-workflow.mdx
-│   ├── ai-agent-workflow.mdx
-│   ├── whatsapp-automation.mdx
-│   └── android-automation.mdx
-├── nodes/              # Node documentation
-│   ├── overview.mdx    # All 60 nodes overview
-│   ├── ai-models.mdx   # 6 AI providers
-│   ├── ai-agent.mdx    # AI Agent, Chat Agent, Memory
-│   ├── skills.mdx      # 10 skill nodes
-│   ├── tools.mdx       # 4 tool nodes
-│   ├── documents.mdx   # 6 RAG pipeline nodes
-│   ├── whatsapp.mdx
-│   ├── android.mdx
-│   ├── webhooks.mdx
-│   └── schedulers.mdx
-├── deployment/
-│   ├── docker.mdx
-│   └── production.mdx
-├── .github/workflows/  # Auto-deploy on push
+├── docs.json           # Mintlify config + navigation (Dracula theme)
+├── introduction.mdx
+├── installation.mdx
+├── quickstart.mdx
+├── architecture.mdx
+├── faq.mdx
+├── tutorials/          # 4 step-by-step guides
+├── nodes/              # 10 node-category pages
+├── deployment/         # production (machina deploy) + docker (legacy)
+├── .github/workflows/  # Auto-deploy on push to main
 └── logo/
 ```
 
 ## Theme
 
-Using Dracula color palette:
-- Primary: `#BD93F9` (purple)
-- Light: `#FF79C6` (pink)
-- Dark: `#6272A4` (comment)
-- Background: `#282A36` (dark)
-- Code blocks: Dracula syntax highlighting
+Dracula palette (defined in `docs.json`):
+
+- Primary `#BD93F9` (purple) · Light `#FF79C6` (pink) · Dark `#6272A4`
+- Code blocks: Dracula (dark) / GitHub Light (light)
 
 ## Contributing
 
-1. Edit `.mdx` files
-2. Test locally with `mintlify dev`
-3. Commit and push - auto-deploys via GitHub Actions
+1. Edit the `.mdx` files - keep facts in sync with the MachinaOs code (models, node names, CLI commands).
+2. Preview locally with `mint dev`.
+3. Commit and push to `main` - GitHub Actions auto-deploys the site.
 
 ## Mintlify Components
 
-- `<Card>`, `<CardGroup>` - Feature cards
-- `<Tabs>` - Tabbed content
-- `<Accordion>` - Collapsible sections
-- `<Info>`, `<Warning>`, `<Tip>` - Callouts
-- `<ParamField>` - Parameter docs
+`<Card>` / `<CardGroup>`, `<Tabs>` / `<Tab>`, `<Accordion>`, `<Info>` / `<Warning>` / `<Tip>` / `<Check>`, `<ParamField>`, `<Steps>`.
 
-See [Mintlify docs](https://mintlify.com/docs) for full reference.
+See the [Mintlify docs](https://mintlify.com/docs) for the full component reference.
