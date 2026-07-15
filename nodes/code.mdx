@@ -3,4 +3,275 @@ title: "Code Executors"
 description: "Run Python, JavaScript, TypeScript, and sandboxed Monty code inside workflows"
 ---
 
-This page is being written.
+Code executor nodes run short scripts as workflow steps -- the glue for transforms, conditionals, and formatting that would be awkward as separate nodes. Data from connected upstream nodes arrives in an `input_data` dictionary, anything you `print()` (or `console.log()`) is captured as `console_output`, and every executor doubles as an AI agent tool when connected to an agent's tools input.
+
+## Choosing an executor
+
+| Node | Language | Sandboxed? | Runtime |
+|------|----------|------------|---------|
+| Python Executor | Python | No -- trusted input only | Backend Python process |
+| Monty Executor | Python subset | Yes -- deny-by-default, enforced time and memory limits | Monty interpreter (Rust) |
+| JavaScript Executor | JavaScript | No | Persistent Node.js server |
+| TypeScript Executor | TypeScript | No | Persistent Node.js server (via `tsx`) |
+
+Rule of thumb: **Monty Executor** for AI-generated or untrusted code (its limits are actually enforced), **Python Executor** for your own quick transforms, **JavaScript/TypeScript Executor** when the logic is more natural in JS or needs npm-ecosystem idioms.
+
+---
+
+## Python Executor
+
+Runs Python directly in the backend process. Assign your result to a variable named `output` -- that value becomes the node's output.
+
+### Parameters
+
+<ParamField path="code" type="code" required>
+  Python source. Must assign to `output` to emit a value.
+</ParamField>
+
+<ParamField path="timeout" type="number" default="30">
+  Accepted and validated (1-600 seconds) but **not enforced** -- a hanging script blocks the backend. Use **Monty Executor** when you need an enforced limit.
+</ParamField>
+
+### Pre-injected names
+
+A fixed set of names is available in the namespace without importing:
+
+- `math` -- mathematical functions
+- `json` -- JSON parsing
+- `datetime` -- date/time handling
+- `re` -- regular expressions
+- `random` -- random number generation
+- `Counter`, `defaultdict` -- collections helpers
+
+Reference them directly, for example `math.sqrt(4)` or `json.loads(raw)`.
+
+### Imports are blocked
+
+`import` statements are not available -- the sandboxed builtins have no `__import__`, so `import requests` fails with an error explaining that imports are not allowed and listing the pre-injected names. The fix: use the pre-injected modules directly, or reach for the **Process Manager** node when you genuinely need another module or an external program.
+
+### Output
+
+```json
+{
+  "output": {"word_count": 12, "has_question": true},
+  "console_output": "debug line printed with print()\n"
+}
+```
+
+If the code raises, the error message includes the exception type and line number -- and any `print()` output captured before the failure is preserved in the error.
+
+### Example: data processing
+
+```python
+# Access input data
+message = input_data.get("text", "")
+
+# Process
+word_count = len(message.split())
+has_question = "?" in message
+
+# Set output
+output = {
+    "word_count": word_count,
+    "has_question": has_question,
+    "summary": f"Message has {word_count} words"
+}
+```
+
+<Warning>
+The Python Executor is **not** a security boundary. Code runs in the server process with its full OS privileges, and the builtins whitelist can be escaped by determined code. Treat it as trusted-input only; use **Monty Executor** for untrusted or AI-generated code.
+</Warning>
+
+---
+
+## Monty Executor
+
+A hard-sandboxed alternative that runs code through [Monty](https://github.com/pydantic/monty), a Python subset implemented in Rust. It is deny-by-default -- no filesystem, no network, no host access -- unless you grant specific capabilities, and its time and memory limits are **enforced** by the interpreter. Exposed to agents as the `sandboxed_python` tool.
+
+Unlike the other executors, you do not assign to `output`: the program's **last expression** becomes the output.
+
+### Parameters
+
+<ParamField path="code" type="code" required>
+  Python (Monty subset) source. The last expression is returned as `output`.
+</ParamField>
+
+<ParamField path="timeout" type="number" default="30">
+  Wall-clock limit in seconds (1-600), enforced
+</ParamField>
+
+<ParamField path="max_memory_mb" type="number" default="256">
+  Memory limit in MB (16-2048), enforced
+</ParamField>
+
+<ParamField path="capabilities" type="array" default="[]">
+  Opt-in grants; empty means fully isolated. `http_get` enables an SSRF-guarded `http_get(url)` function for public hosts; `workspace_read` / `workspace_write` mount the per-workflow workspace at `/workspace` (read-only / read-write).
+</ParamField>
+
+### Language subset
+
+Supported: `def`, closures, `lambda`, `if`/`for`/`while`, `try`/`except`, comprehensions, f-strings, `async def`/`await`, and `import math`, `import json`, `import re`.
+
+Not supported: `class`, `yield`/generators, `with`, `match`, and imports of `random`, `collections`, or `os`. Unsupported features fail with a clear error suggesting the Python Executor instead.
+
+### Output
+
+```json
+{
+  "output": [1, 4, 9, 16],
+  "console_output": ""
+}
+```
+
+### Example
+
+```python
+values = input_data.get("numbers", [1, 2, 3, 4])
+[v * v for v in values]
+```
+
+The list comprehension is the last expression, so it becomes `output`.
+
+---
+
+## JavaScript Executor
+
+Runs JavaScript on a persistent Node.js executor server that the backend starts alongside itself (default `http://localhost:3020`) -- no per-call process spawn. Assign your result to `output`; `console.log` and friends are captured as `console_output`.
+
+### Parameters
+
+<ParamField path="code" type="code" required>
+  JavaScript source. Must assign to `output`.
+</ParamField>
+
+<ParamField path="timeout" type="number" default="30">
+  Script timeout in seconds (1-600), forwarded to the Node.js server as milliseconds
+</ParamField>
+
+### Output
+
+```json
+{
+  "output": {"items": 3},
+  "console_output": "processing...\n"
+}
+```
+
+### Example
+
+```javascript
+const items = input_data.items || [];
+const total = items.reduce((sum, i) => sum + (i.price || 0), 0);
+
+output = {
+  count: items.length,
+  total: Math.round(total * 100) / 100
+};
+```
+
+If the executor server is not running, the node fails with a clear "executor not running on localhost:3020" error rather than hanging.
+
+---
+
+## TypeScript Executor
+
+Identical to the JavaScript Executor except the script runs through `tsx`, so TypeScript type annotations parse without error. Same parameters (**Code**, **Timeout**), same output shape, same Node.js server. Types are erased at runtime -- interfaces and type aliases are compile-time only, and the returned `output` is still plain JSON.
+
+```typescript
+interface Item { name: string; price: number }
+
+const items: Item[] = input_data.items || [];
+output = items.filter(i => i.price > 10).map(i => i.name);
+```
+
+Compile errors from `tsx` surface verbatim as the node's error message.
+
+---
+
+## Passing data in and out
+
+**In: `input_data`.** Each executor receives the outputs of its connected upstream nodes as a dictionary keyed by the source node's id. Inspect it defensively (`input_data.get(...)` / `input_data.x || fallback`) since the exact keys depend on what is wired in.
+
+**Out: the return contract.**
+
+| Executor | How to emit a result |
+|----------|----------------------|
+| Python Executor | Assign to the `output` variable |
+| JavaScript / TypeScript Executor | Assign to the `output` variable |
+| Monty Executor | The program's last expression |
+
+All four return the same payload shape: `{output, console_output}`. Downstream nodes can reference the result with template variables (`{{<node>.output}}`).
+
+**Workspace access.** The per-workflow workspace directory is available too: the Python Executor exposes a `workspace_dir` variable in the namespace; the JavaScript/TypeScript Executors inject it as `input_data.workspace_dir`; the Monty Executor sees the workspace at `/workspace` only when a `workspace_read` / `workspace_write` capability is granted.
+
+**JSON-only transport (JS/TS).** The `output` value must survive `JSON.stringify` -- functions, `undefined`, `BigInt`, and circular references are stripped or rejected.
+
+---
+
+## Example: transform JSON from a webhook
+
+Receive a webhook, reshape its payload, and respond:
+
+```
+[Webhook Trigger] --> [Python Executor] --> [Webhook Response]
+```
+
+Python Executor code:
+
+```python
+# The webhook trigger's output arrives in input_data
+payload = {}
+for value in input_data.values():
+    if isinstance(value, dict) and "body" in value:
+        payload = value.get("body") or {}
+
+orders = payload.get("orders", [])
+total = sum(o.get("amount", 0) for o in orders)
+
+output = {
+    "order_count": len(orders),
+    "total_amount": total,
+    "status": "ok" if orders else "empty"
+}
+```
+
+The Webhook Response node can then return the executor's `output` to the caller via a template variable.
+
+---
+
+## Tips
+
+<Tip>
+Use the **Python Executor** for conditional logic instead of multiple workflow branches -- one small script often replaces a tangle of nodes.
+</Tip>
+
+<Tip>
+Wiring an executor to an AI Agent's tools input turns it into a code tool (`python_code`, `sandboxed_python`, `javascript_code`, `typescript_code`). For agent-written code, prefer **Monty Executor** -- its limits are enforced.
+</Tip>
+
+<Tip>
+`print()` / `console.log` liberally while developing: everything lands in `console_output`, and on Python errors the output captured before the failure is preserved in the error message.
+</Tip>
+
+<Warning>
+Only the **Monty Executor** enforces its timeout. Python Executor scripts run until they finish -- a tight infinite loop blocks the backend for everyone.
+</Warning>
+
+---
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Filesystem & Shell" icon="folder-open" href="/nodes/filesystem">
+    Read and write workspace files, run shell commands
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/nodes/webhooks">
+    Trigger workflows over HTTP and respond
+  </Card>
+  <Card title="AI Agents" icon="robot" href="/nodes/ai-agent">
+    Give agents code execution as a tool
+  </Card>
+  <Card title="Schedulers & Triggers" icon="clock" href="/nodes/schedulers">
+    Run transforms on a schedule
+  </Card>
+</CardGroup>

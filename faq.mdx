@@ -111,15 +111,12 @@ Common questions and troubleshooting for OpenCompany.
 
 <AccordionGroup>
   <Accordion title="Where do I add my API keys?">
-    Click the **key icon** in the toolbar to open the Credentials panel. OpenCompany supports 12 LLM providers plus service credentials, including:
-    - OpenAI
-    - Anthropic (Claude)
-    - Google AI (Gemini)
-    - OpenRouter, xAI, Groq, Cerebras, DeepSeek, Kimi (Moonshot), Mistral
+    Click the **key icon** in the toolbar to open the **API Credentials** modal — the [Add your AI key](/add-api-keys) page walks through it step by step. OpenCompany supports 12 providers (11 dedicated model nodes, plus xAI through the OpenAI-compatible path):
+    - OpenAI, Anthropic, Gemini
+    - OpenRouter, xAI, Groq, Cerebras, DeepSeek, Kimi, Mistral
     - Ollama and LM Studio (local servers — enter the server URL, no cloud key needed)
-    - Google Workspace, Google Maps, Twitter/X, Telegram, WhatsApp, and other services
 
-    Ollama and LM Studio point at a local server URL (for example `http://localhost:11434/v1`) instead of a cloud API key.
+    Service credentials (Google Workspace, Google Maps, Twitter/X, Telegram, WhatsApp, and more) live in the same modal — see [Credentials](/credentials).
   </Accordion>
 
   <Accordion title="Are my API keys secure?">
@@ -275,36 +272,9 @@ Common questions and troubleshooting for OpenCompany.
   </Accordion>
 </AccordionGroup>
 
-## Troubleshooting
+## Something broken?
 
-<AccordionGroup>
-  <Accordion title="Frontend shows blank page">
-    - Check browser console for errors
-    - Verify the frontend and backend are running
-    - Clear browser cache
-    - Check if ports are blocked by firewall
-  </Accordion>
-
-  <Accordion title="WebSocket connection fails">
-    - Verify the backend is running (port 3010)
-    - If behind a reverse proxy, check the WebSocket proxy configuration
-    - Ensure no firewall blocks WebSocket traffic
-    - Check CORS settings in `.env`
-  </Accordion>
-
-  <Accordion title="High memory usage">
-    - Restart the services: `company stop` then `company start`
-    - Check for runaway workflows
-    - Limit the conversation memory window size
-    - Increase server RAM if needed
-  </Accordion>
-
-  <Accordion title="Database locked error">
-    SQLite doesn't handle concurrent writes well. If you see "database is locked":
-    - Restart the backend (`company stop` then `company start`)
-    - On production, enable Redis (`REDIS_ENABLED=true`) so execution state uses Redis instead of SQLite
-  </Accordion>
-</AccordionGroup>
+Install failures, port conflicts, blank pages, and workflow problems all live on the dedicated [Troubleshooting](/troubleshooting) page, with exact commands and expected output for each fix.
 
 ## Getting Help
 

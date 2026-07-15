@@ -3,4 +3,271 @@ title: "Web Search"
 description: "Brave, DuckDuckGo, Perplexity, and Serper search nodes - usable as workflow steps or AI agent tools"
 ---
 
-This page is being written.
+OpenCompany ships four web search nodes, usable in two ways:
+
+- **As a workflow step** -- drop the node on the canvas, set the **Query** parameter, and wire its output into downstream nodes (Brave, Serper, and Perplexity are dual-purpose nodes).
+- **As an AI agent tool** -- connect the node's tool output to an AI Agent's tools input. The agent sees the node as a callable tool, fills in the query itself, and decides *when* (and whether) to search during its reasoning loop. All four nodes work this way; DuckDuckGo is a pure tool node, so this is its only mode.
+
+The same parameters documented below apply on both paths -- when an agent calls the tool, the LLM fills the same parameter schema you would fill in the parameter panel.
+
+## Choosing a search node
+
+| Node | API key needed | Best for |
+|------|----------------|----------|
+| DuckDuckGo Search | None (free) | Zero-setup web search; the default choice for agent tools |
+| Brave Search | Brave Search API key | Ranked web results with title/snippet/URL, country and language targeting |
+| Serper Search | Serper API key | Google results, including news, images, and places verticals |
+| Perplexity Search | Perplexity API key | An AI-written answer with citation URLs, not a raw result list |
+
+Paid keys are added in the credentials modal: **Brave Search**, **Serper**, and **Perplexity** each have their own entry with an **API Key** field.
+
+---
+
+## DuckDuckGo Search
+
+Free web search with no API key and no credentials, via the `ddgs` Python library. This is a pure tool node -- its only entry point is an AI agent calling it through the tools connection, so it exposes a **Tool** output handle rather than a main output. The tool is exposed to the LLM as `web_search`.
+
+### Parameters
+
+<ParamField path="query" type="string" required>
+  Search query
+</ParamField>
+
+<ParamField path="max_results" type="number" default="5">
+  Maximum results to return (1-20)
+</ParamField>
+
+### Output
+
+```json
+{
+  "query": "workflow automation platforms",
+  "results": [
+    {"title": "Result title", "snippet": "Result body text...", "url": "https://example.com/page"}
+  ],
+  "provider": "duckduckgo"
+}
+```
+
+If DuckDuckGo rejects the query (rate limit, transient network failure, bot detection), the node surfaces a clean "DuckDuckGo search failed" error that the agent can act on by retrying with a different query.
+
+---
+
+## Brave Search
+
+Free-text web search via the Brave Search REST API. Returns ranked web results with title, snippet, and URL. Tool name when connected to an agent: `brave_search`.
+
+### Parameters
+
+<ParamField path="query" type="string" required>
+  Search query
+</ParamField>
+
+<ParamField path="max_results" type="number" default="10">
+  Maximum results to return (1-20). Values above 20 fail validation rather than being silently capped.
+</ParamField>
+
+<ParamField path="country" type="string">
+  ISO country code (e.g. `US`). Only sent to the API when set.
+</ParamField>
+
+<ParamField path="search_lang" type="string" default="en">
+  ISO language code
+</ParamField>
+
+<ParamField path="safe_search" type="select" default="moderate">
+  One of `off`, `moderate`, or `strict`
+</ParamField>
+
+### Output
+
+```json
+{
+  "query": "workflow automation platforms",
+  "results": [
+    {"title": "Result title", "snippet": "Result summary...", "url": "https://example.com/page"}
+  ],
+  "result_count": 10,
+  "provider": "brave_search"
+}
+```
+
+### Example: country-targeted search
+
+```
+Query: best coffee subscription
+Max Results: 5
+Country: US
+Safe Search: moderate
+```
+
+---
+
+## Serper Search
+
+Google SERP results via the Serper API. Supports four search verticals -- web, news, images, and places -- plus optional knowledge-graph enrichment on the default web search. Tool name when connected to an agent: `serper_search`.
+
+### Parameters
+
+<ParamField path="query" type="string" required>
+  Search query
+</ParamField>
+
+<ParamField path="search_type" type="select" default="search">
+  One of `search` (web), `news`, `images`, or `places`
+</ParamField>
+
+<ParamField path="max_results" type="number" default="10">
+  Maximum results to return (1-100)
+</ParamField>
+
+<ParamField path="country" type="string">
+  Country code, sent as Google's `gl` parameter. Only sent when set.
+</ParamField>
+
+<ParamField path="language" type="string" default="en">
+  Language code, sent as Google's `hl` parameter
+</ParamField>
+
+### Output
+
+```json
+{
+  "query": "openai announcements",
+  "results": [
+    {"title": "Result title", "snippet": "Result summary...", "url": "https://example.com/page", "position": 1}
+  ],
+  "result_count": 10,
+  "search_type": "search",
+  "knowledge_graph": null,
+  "provider": "serper"
+}
+```
+
+Every result uses the same unified shape regardless of vertical; fields a vertical does not populate are left empty:
+
+| Vertical | Populated fields |
+|----------|------------------|
+| `search` | `title`, `snippet`, `url`, `position` |
+| `news` | `title`, `snippet`, `url` |
+| `images` | `title`, `url` (image URL) |
+| `places` | `title`, `url` (website) |
+
+`knowledge_graph` is only set when Google returns a knowledge-graph panel for the query.
+
+---
+
+## Perplexity Search
+
+An AI-generated answer with inline citations from Perplexity's Sonar models. Instead of a raw result list, you get an LLM-written markdown answer *plus* the citation URLs the model used, so downstream nodes can render references or follow the sources. Tool name when connected to an agent: `perplexity_search`.
+
+### Parameters
+
+<ParamField path="query" type="string" required>
+  Question for the model
+</ParamField>
+
+<ParamField path="model" type="select" default="sonar">
+  One of `sonar`, `sonar-pro`, `sonar-reasoning`, or `sonar-reasoning-pro`
+</ParamField>
+
+<ParamField path="search_recency_filter" type="select" default="all">
+  Restrict sources by recency: `all` (off), `month`, `week`, `day`, or `hour`
+</ParamField>
+
+<ParamField path="return_images" type="boolean" default="false">
+  Request images from the API
+</ParamField>
+
+<ParamField path="return_related_questions" type="boolean" default="false">
+  Request related questions from the API
+</ParamField>
+
+### Output
+
+```json
+{
+  "query": "what changed in the latest React release?",
+  "answer": "Markdown answer with inline citations...",
+  "citations": ["https://react.dev/blog/..."],
+  "results": [{"url": "https://react.dev/blog/..."}],
+  "images": null,
+  "related_questions": null,
+  "model": "sonar",
+  "provider": "perplexity"
+}
+```
+
+The `results` list is a remap of the citation URLs -- entries carry only `url`, not `title` or `snippet`. If downstream nodes need titles and snippets, use **Brave Search** or **Serper Search** instead.
+
+---
+
+## Give your agent search
+
+Any search node becomes an agent tool by connecting its tool output to the AI Agent's tools input:
+
+```
+[DuckDuckGo Search] --> (tools) [AI Agent] <-- (model) [Chat Model]
+```
+
+Once connected, the agent decides when to search. It may answer directly from its own knowledge, or call the tool one or more times with queries it composes itself -- you do not script the searches. The node's tool description tells the LLM what the tool does; each node ships a sensible default.
+
+Connect several search nodes at once and the agent picks between them (for example, DuckDuckGo for general lookups and Perplexity when it wants a synthesized, cited answer).
+
+---
+
+## Example: research agent
+
+The cheapest possible research setup -- the only credential required is the API key for your chat model, because DuckDuckGo needs none:
+
+```
+[Chat Trigger] --> [AI Agent] <-- (model) [OpenAI Chat Model]
+                       ^
+                       | (tools)
+              [DuckDuckGo Search]
+```
+
+1. Drop an **AI Agent** on the canvas and connect a chat model.
+2. Add a **DuckDuckGo Search** node and connect its **Tool** handle to the agent's tools input.
+3. Ask the agent something time-sensitive in the Chat panel, e.g. "What were the top tech headlines this week? Summarize in three bullets."
+
+The agent calls `web_search` (possibly several times with refined queries), reads the snippets, and writes the summary.
+
+---
+
+## Tips
+
+<Tip>
+Start with **DuckDuckGo Search** -- it is free and needs no key. Add **Brave Search** or **Serper Search** when you need country/language targeting, more results, or Google's verticals.
+</Tip>
+
+<Tip>
+**Perplexity Search** returns an answer, not links. Use it when the agent needs a synthesized, cited response in one call; use the other nodes when downstream logic needs structured result lists.
+</Tip>
+
+<Tip>
+Keep `max_results` small for agent tools. Fewer, more relevant snippets keep the agent's context lean and its follow-up queries sharper.
+</Tip>
+
+<Warning>
+Brave's `max_results` is hard-limited to 20 -- a larger value fails parameter validation instead of being clamped. Serper accepts up to 100.
+</Warning>
+
+---
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="AI Agents" icon="robot" href="/nodes/ai-agent">
+    Connect search tools to agents
+  </Card>
+  <Card title="Scraping & Proxies" icon="spider" href="/nodes/scraping">
+    Read full pages instead of snippets
+  </Card>
+  <Card title="Browser Automation" icon="globe" href="/nodes/browser">
+    Click, type, and extract from live pages
+  </Card>
+  <Card title="Tools" icon="wrench" href="/nodes/tools">
+    The full AI tool catalogue
+  </Card>
+</CardGroup>

@@ -14,7 +14,7 @@ Control when and how workflows start execution.
 | Start | Trigger | Manual workflow start |
 | Cron Scheduler | Trigger (also AI tool) | Run on a recurring schedule |
 | Timer | Action (also AI tool) | Delay execution |
-| Python Executor | Action (also AI tool) | Run Python code |
+| [Python Executor](/nodes/code) | Action (also AI tool) | Run Python code |
 
 ---
 
@@ -168,92 +168,7 @@ See [AI Tools](/nodes/tools#timer-tool) for the full tool schema and LLM interac
 
 ## Python Executor
 
-Run custom Python code within workflows.
-
-### Parameters
-
-<ParamField path="code" type="code" required>
-  Python code to execute
-</ParamField>
-
-### Available Variables
-
-| Variable | Description |
-|----------|-------------|
-| `input_data` | Data from connected input node |
-| `output` | Dictionary to set as node output |
-
-### Example: Data Processing
-
-```python
-# Access input data
-message = input_data.get("text", "")
-
-# Process
-word_count = len(message.split())
-has_question = "?" in message
-
-# Set output
-output = {
-    "word_count": word_count,
-    "has_question": has_question,
-    "summary": f"Message has {word_count} words"
-}
-```
-
-### Example: Conditional Logic
-
-```python
-level = input_data.get("battery_level", 100)
-is_charging = input_data.get("is_charging", False)
-
-if level < 20 and not is_charging:
-    output = {
-        "action": "alert",
-        "message": f"Low battery: {level}%"
-    }
-else:
-    output = {
-        "action": "none"
-    }
-```
-
-### Example: API Response Formatting
-
-```python
-# Parse response (json is available without importing)
-data = input_data.get("data", {})
-items = data.get("items", [])
-
-# Format for output
-formatted = []
-for item in items:
-    formatted.append({
-        "name": item.get("name"),
-        "price": f"${item.get('price', 0):.2f}"
-    })
-
-output = {
-    "count": len(formatted),
-    "items": formatted
-}
-```
-
-### Available Libraries
-
-The Python executor pre-injects a fixed set of names into the namespace:
-- `math` - Mathematical functions
-- `json` - JSON parsing
-- `datetime`, `timedelta` - Date/time handling
-- `re` - Regular expressions
-- `random` - Random number generation
-- `Counter`, `defaultdict` - Collections helpers
-
-Reference them directly (for example `math.sqrt(4)`). `import` statements are not available in the sandbox; for other modules use the **Process Manager** node instead.
-
-<Warning>
-Code runs in a sandboxed environment. File system and network access are restricted.
-</Warning>
+The Python Executor moved to its own page alongside the other code nodes — see [Code Executors](/nodes/code). It pairs naturally with schedulers: a Cron Scheduler firing into a Python Executor is the classic zero-credential automation.
 
 ---
 

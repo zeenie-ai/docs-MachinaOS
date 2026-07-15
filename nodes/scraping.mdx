@@ -3,4 +3,335 @@ title: "Scraping & Proxies"
 description: "Crawlee and Apify scraping nodes, plus residential proxy configuration and monitoring"
 ---
 
-This page is being written.
+Scraping nodes fetch and extract content from pages you already know about. If that is not quite your problem, a neighbouring page probably is:
+
+| You want to... | Use |
+|----------------|-----|
+| Find pages / get search snippets | [Web Search](/nodes/search) |
+| Read content from known pages at scale | This page (Crawlee, Apify) |
+| Click, type, and interact with a live page | [Browser Automation](/nodes/browser) |
+
+This page also covers the residential proxy system -- provider configuration, proxied requests, and health monitoring -- which the scraping nodes can route through.
+
+---
+
+## Crawlee Scraper
+
+Python-based scraping on top of the `crawlee` library. Crawlee manages concurrency, retry back-off, and request queues internally -- you feed in configuration and get back a list of pages. Also usable as an AI agent tool.
+
+### Engines
+
+| Engine | How it fetches | Use for |
+|--------|----------------|---------|
+| `beautifulsoup` | Plain HTTP + HTML parsing | Fast scraping of static pages |
+| `playwright` | Full headless browser | JS-rendered pages that need a real render |
+| `adaptive` | Currently aliased to `beautifulsoup` | (No automatic escalation today) |
+
+### Modes
+
+- `single` -- scrape only the seed URL (page and depth caps are forced to 1 and 0).
+- `crawl` -- follow links matching **Link Selector** (defaults to `a[href]`) and an optional **URL Pattern**, up to **Max Pages** / **Max Depth**.
+
+### Parameters
+
+<ParamField path="url" type="string" required>
+  Seed URL
+</ParamField>
+
+<ParamField path="crawler_type" type="select" default="beautifulsoup">
+  `beautifulsoup`, `playwright`, or `adaptive`
+</ParamField>
+
+<ParamField path="mode" type="select" default="single">
+  `single` or `crawl`
+</ParamField>
+
+<ParamField path="css_selector" type="string">
+  CSS selector for text/HTML extraction. Empty extracts the whole page.
+</ParamField>
+
+<ParamField path="output_format" type="select" default="text">
+  `text`, `html`, or `markdown` (markdown falls back to text if the `html2text` package is not installed)
+</ParamField>
+
+<ParamField path="extract_links" type="boolean" default="false">
+  Include a `links[]` array on each page
+</ParamField>
+
+<ParamField path="max_pages" type="number" default="10">
+  Page cap in crawl mode (1-1000)
+</ParamField>
+
+<ParamField path="max_depth" type="number" default="2">
+  Link-following depth in crawl mode (0-50)
+</ParamField>
+
+<ParamField path="url_pattern" type="string">
+  Glob-style pattern (e.g. `*/blog/*`) restricting which discovered links are followed (crawl mode)
+</ParamField>
+
+<ParamField path="timeout" type="number" default="60">
+  Timeout in seconds -- applied per request handler and to the whole run (1-3600)
+</ParamField>
+
+Playwright-only knobs: `browser_type` (`chromium` / `firefox` / `webkit`), `wait_for_selector` + `wait_timeout` (await an element before extracting), `take_screenshot` (base64 PNG per page).
+
+Proxy knobs: `use_proxy` plus `proxy_provider` (`auto` picks by health score), `proxy_country`, `session_type` (`rotating` / `sticky`), and `sticky_duration` -- see [Proxies](#proxies) below.
+
+### Output
+
+```json
+{
+  "pages": [
+    {
+      "url": "https://example.com/article",
+      "title": "Article title",
+      "content": "Extracted text...",
+      "links": ["https://example.com/next"]
+    }
+  ],
+  "page_count": 1,
+  "crawler_type": "beautifulsoup",
+  "mode": "single",
+  "proxied": false
+}
+```
+
+Per-page content is capped at 100,000 characters.
+
+### Example: crawl a blog
+
+```
+URL: https://blog.example.com
+Crawler Type: beautifulsoup
+Mode: crawl
+Link Selector: a.post-link
+URL Pattern: */blog/*
+Max Pages: 25
+Max Depth: 2
+```
+
+<Warning>
+Proxy failures degrade gracefully: if the proxy service cannot supply a URL, the crawl proceeds **without** a proxy and reports `proxied: false` -- which means the target site sees your real IP. Check `proxied` in the output if that matters.
+</Warning>
+
+---
+
+## Apify Actor
+
+Run an [Apify](https://apify.com) actor -- a pre-built scraper or automation hosted on the Apify platform -- wait for it to finish, and return its dataset items. This is the escape hatch for platforms without a first-class OpenCompany integration: Instagram, TikTok, Twitter/X, LinkedIn, Facebook, YouTube, Google Search and Maps, and general website crawling. Also usable as an AI agent tool.
+
+To connect your account, open **API Credentials**, choose **Apify**, paste your key (format `apify_api_...`) into the **API Key** field, and hit **Validate**.
+
+<Note>
+Apify is a paid platform. Actors consume Apify usage on your account as they run (many actors also have their own per-result pricing), and heavier `memory` settings cost more per second. The `compute_units` field in the output actually reports the run's total USD usage. Check an actor's pricing on Apify before running it at scale.
+</Note>
+
+### Parameters
+
+<ParamField path="actor_id" type="select" default="apify/instagram-scraper" required>
+  One of 10 curated presets -- `apify/instagram-scraper`, `clockworks/tiktok-scraper`, `apidojo/tweet-scraper`, `apify/linkedin-scraper`, `apify/facebook-pages-scraper`, `streamers/youtube-scraper`, `apify/google-search-scraper`, `compass/crawler-google-places`, `apify/website-content-crawler`, `curious_coder/web-scraper` -- or `custom`
+</ParamField>
+
+<ParamField path="custom_actor_id" type="string">
+  Any actor id from the Apify store (when **Actor** is `custom`)
+</ParamField>
+
+<ParamField path="actor_input" type="string">
+  Raw JSON run-input for the actor. Invalid JSON is silently treated as `{}`.
+</ParamField>
+
+<ParamField path="max_results" type="number" default="100">
+  Maximum dataset items to fetch (1-10000)
+</ParamField>
+
+<ParamField path="timeout" type="number" default="300">
+  Run timeout in seconds (1-3600)
+</ParamField>
+
+<ParamField path="memory" type="select" default="1024">
+  Actor memory in MB: 128 / 256 / 512 / 1024 / 2048 / 4096 / 8192
+</ParamField>
+
+Five presets also expose "quick helper" fields that fill the actor input for you -- e.g. `instagram_urls` (Instagram), `tiktok_profiles` / `tiktok_hashtags` (TikTok), `twitter_search_terms` / `twitter_handles` (tweet scraper), `google_search_query` / `google_search_pages` (Google Search), and `crawler_start_urls` / `crawler_max_depth` / `crawler_max_pages` (website content crawler). Quick helpers **overwrite** matching keys in your raw **Actor Input** JSON.
+
+### Output
+
+```json
+{
+  "run_id": "aBcD1234",
+  "actor_id": "apify/website-content-crawler",
+  "status": "SUCCEEDED",
+  "items": [{"url": "https://example.com", "text": "Page content..."}],
+  "item_count": 42,
+  "dataset_id": "xYz987",
+  "compute_units": 0.12,
+  "started_at": "2026-07-15T10:00:00Z",
+  "finished_at": "2026-07-15T10:03:12Z"
+}
+```
+
+Runs that end `FAILED`, `TIMED-OUT`, or `ABORTED` surface as node errors with the actor's error message.
+
+---
+
+## Proxies
+
+OpenCompany includes a residential proxy service: you register one or more proxy providers (gateway host/port plus a URL template), store their credentials, and the service picks the best provider per request using health scores, routing rules (domain glob -> preferred providers), geo-targeting, and rotating or sticky sessions.
+
+The scraping and HTTP nodes opt in transparently -- **Crawlee Scraper**, **HTTP Request**, and **HTTP Scraper** all have a `use_proxy` flag; when set, the node asks the proxy service for a URL and routes traffic through it. Three dedicated nodes manage and use the service directly.
+
+### Proxy Config
+
+Admin node (and AI tool) for managing providers, credentials, and routing rules. Dispatches on **Operation**:
+
+| Operation | Required params | What it does |
+|-----------|-----------------|--------------|
+| `list_providers` | none | List configured providers |
+| `add_provider` | `name`, `gateway_host`, `gateway_port`, `url_template` | Register a provider (JSON URL template) |
+| `update_provider` | `name` + changed fields | Update an existing provider |
+| `remove_provider` | `name` | Delete a provider |
+| `set_credentials` | `name`, `username`, `password` | Store the provider's credentials (encrypted) |
+| `test_provider` | `name` | Live test via httpbin.org/ip -- returns IP and latency |
+| `get_stats` | none | Aggregate usage and health statistics |
+| `add_routing_rule` | `domain_pattern` | Route matching domains (glob like `*.example.com`) to preferred providers |
+| `list_routing_rules` | none | List routing rules |
+| `remove_routing_rule` | `rule_id` | Delete a routing rule |
+
+Additional `add_provider` / `update_provider` fields: `cost_per_gb` (USD), `priority` (0-100, higher ranks first), `enabled`. Additional `add_routing_rule` fields: `preferred_providers` (JSON array), `required_country`, `session_type`.
+
+### Proxy Request
+
+A proxy-first HTTP client with explicit retry and failover. Unlike the `use_proxy` flag on other nodes (best-effort), **Proxy Request** requires the proxy service to be enabled and errors out if no provider is available. Each attempt reports latency and success back into the provider's health score, and successful requests record byte-based cost.
+
+<ParamField path="url" type="string" required>
+  Target URL
+</ParamField>
+
+<ParamField path="method" type="select" default="GET">
+  GET / POST / PUT / DELETE / PATCH
+</ParamField>
+
+<ParamField path="headers" type="object">
+  Request headers
+</ParamField>
+
+<ParamField path="body" type="string">
+  Request body for POST/PUT/PATCH -- JSON object, or a string (parsed as JSON when possible, sent raw otherwise)
+</ParamField>
+
+<ParamField path="proxy_provider" type="string" default="auto">
+  Specific provider name, or `auto` for health-based selection
+</ParamField>
+
+<ParamField path="proxy_country" type="string">
+  ISO country code for geo-targeting
+</ParamField>
+
+<ParamField path="session_type" type="select" default="rotating">
+  `rotating` (new IP per request) or `sticky` (keep an IP for `sticky_duration` seconds, default 600)
+</ParamField>
+
+<ParamField path="max_retries" type="number" default="3">
+  Retry attempts with provider failover (0-10)
+</ParamField>
+
+<ParamField path="timeout" type="number" default="30">
+  Request timeout in seconds (1-600)
+</ParamField>
+
+Output:
+
+```json
+{
+  "status": 200,
+  "data": {"ip": "203.0.113.7"},
+  "headers": {"content-type": "application/json"},
+  "url": "https://httpbin.org/ip",
+  "method": "GET",
+  "proxy_provider": "auto",
+  "latency_ms": 412,
+  "bytes_transferred": 33,
+  "attempt": 1
+}
+```
+
+An HTTP status of 400 or above counts as a failed attempt and triggers retry/failover; when all attempts fail the node errors with the last error message.
+
+### Proxy Status
+
+Read-only snapshot of the proxy runtime -- useful on dashboards or as an agent tool so the agent can reason about which provider to target.
+
+```json
+{
+  "enabled": true,
+  "providers": [
+    {
+      "name": "provider-a",
+      "enabled": true,
+      "priority": 50,
+      "score": 0.97,
+      "success_rate": 0.99,
+      "avg_latency_ms": 380,
+      "total_requests": 1204,
+      "total_bytes": 8123456
+    }
+  ],
+  "stats": {}
+}
+```
+
+When the proxy service is disabled the node still succeeds and returns `enabled: false` with empty collections -- check `enabled`, not the node's success state. The `provider_name` parameter is currently ignored; the node always returns all providers.
+
+---
+
+## Example: scrape a JS-heavy page and summarize
+
+```
+[Cron Scheduler] --> [Crawlee Scraper] --> [AI Agent] --> [Console]
+```
+
+1. **Crawlee Scraper** -- **Crawler Type**: `playwright`, **Mode**: `single`, **URL**: the page to watch, **Wait For Selector**: the element that signals the page has rendered (e.g. `.article-body`), **Output Format**: `text`.
+2. **AI Agent** -- prompt: "Summarize the key points of this page in five bullets." The scraped `pages[0].content` flows in as input.
+3. **Console** -- shows the summary on each scheduled run.
+
+The playwright engine renders JavaScript before extraction, so client-side apps and infinite-scroll shells produce real content instead of an empty HTML skeleton.
+
+<Note>
+The RAG pipeline's **HTTP Scraper** on [Document Processing](/nodes/documents) is a different node: it extracts *links* from listing pages to feed the download/parse/chunk/embed pipeline, while the nodes on this page extract *content*.
+</Note>
+
+---
+
+## Tips
+
+<Tip>
+Start with `beautifulsoup` -- it is much faster and cheaper than a browser. Switch to `playwright` only when the page genuinely needs JavaScript to render its content.
+</Tip>
+
+<Tip>
+In crawl mode, always set **URL Pattern** and a sensible **Max Pages**. An unconstrained crawl of a large site burns your whole `timeout` on pages you do not need.
+</Tip>
+
+<Tip>
+Use **Proxy Config**'s `test_provider` operation right after `set_credentials` -- it does a live round-trip and returns the exit IP and latency, so a typo in credentials surfaces immediately.
+</Tip>
+
+---
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Web Search" icon="magnifying-glass" href="/nodes/search">
+    Find URLs before you scrape them
+  </Card>
+  <Card title="Browser Automation" icon="globe" href="/nodes/browser">
+    Interact with pages instead of just reading them
+  </Card>
+  <Card title="Document Processing" icon="file-lines" href="/nodes/documents">
+    Feed scraped documents into the RAG pipeline
+  </Card>
+  <Card title="AI Agents" icon="robot" href="/nodes/ai-agent">
+    Give agents scraping tools
+  </Card>
+</CardGroup>

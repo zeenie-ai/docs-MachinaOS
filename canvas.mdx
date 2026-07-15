@@ -3,4 +3,89 @@ title: "The canvas"
 description: "The workflow editor: palette, modes, console, shortcuts, and the Command Palette"
 ---
 
-This page is being written.
+The canvas is where you build. This page names every part of the editor so the rest of the docs can say "press **Start**" and you know exactly where to look.
+
+## The component palette
+
+The palette on the left lists every node you can drag onto the canvas, grouped into sections. A search box at the top matches node names and descriptions.
+
+### Normal mode vs Dev mode
+
+<Info>
+The palette has two views, switched by the **Mode:** toggle in the top toolbar. **Normal** shows only the four AI sections. **Dev** shows everything — including **Utilities**, home of the Chat Trigger and Console nodes the [quickstart](/quickstart) uses. Dev mode changes nothing else; it just reveals more nodes.
+</Info>
+
+| Section | Visible in |
+|---------|-----------|
+| AI Agents, AI Models, AI Skills, AI Tools | Normal and Dev |
+| Utilities (Chat Trigger, Console, HTTP, webhooks...) | Dev |
+| Workflows, Triggers, Schedulers | Dev |
+| WhatsApp, Social, Chat, Email | Dev |
+| Google Workspace, Search, Scrapers, Browser | Dev |
+| Code, Filesystem, Documents, Text, Memory | Dev |
+| Android, Location, Proxy, Services | Dev |
+| Payments, Deployment, Version Control | Dev |
+
+## Working with nodes
+
+- **Add** a node by dragging it from the palette onto the canvas.
+- **Connect** nodes by dragging from the small circle on one node's right edge to the circle on the next node's left edge. Agents have extra left-edge handles for memory and tools.
+- **Configure** a node by clicking it. The parameter panel opens with three areas: **Input** (what flows in from connected nodes), **Parameters** (the node's settings), and **Output** (what it produced last run). The panel's own **Run** button executes just that node for testing.
+- **Rename** a node with F2, or double-click its label. Clear names keep big workflows readable.
+- **Copy** with Ctrl+C, **delete** with the Delete key, and right-click for the context menu with the same actions.
+
+## Node states
+
+| What you see | What it means |
+|--------------|---------------|
+| Plain node | Idle — not running |
+| Gentle pulse on a trigger | Listening — the workflow is started and waiting for its event |
+| Glow / highlight | Running right now |
+| Green tint | Finished successfully |
+| Red tint | Failed — click the node to read the error in its Output |
+
+## The top toolbar
+
+- **Start** (green) deploys the workflow: triggers begin listening and stay on until you press **Stop**.
+- **Save** stores your changes; the pill next to it reads **Modified** or **Saved**.
+- **Mode:** toggles the palette between **Normal** and **Dev**.
+- The key icon opens **API Credentials** ([Credentials](/credentials)).
+- **File** menu: **New Workflow**, **Open**, **Export**, **Import**, **Copy as JSON**.
+- Click the workflow name to rename it.
+
+## The Chat / Console panel
+
+The collapsible bar at the bottom of the screen opens the panel:
+
+- **Chat** (left) sends messages to Chat Trigger nodes. The input reads **Type a message...**; Enter or **Send** submits. With several Chat Triggers, a dropdown (default **All Triggers**) picks the target.
+- **Console** tab (right) shows everything your Console nodes print — including AI replies in the quickstart pipeline. Empty state: "Add a Console node to see debug output."
+- **Terminal** tab (right) streams the server's own logs, useful when something misbehaves.
+
+## The Command Palette
+
+Press **Ctrl+K** (Windows/Linux) or **Cmd+K** (macOS) to open the Command Palette — a searchable list of editor actions. Type to filter, Enter to run.
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| Ctrl+K / Cmd+K | Open the Command Palette |
+| F2 | Rename the selected node |
+| Ctrl+C | Copy the selected node |
+| Delete | Delete the selected node |
+| Enter (in Chat) | Send the message (Shift+Enter for a new line) |
+
+## Run vs Start, and testing one node
+
+**Start** (toolbar) runs the whole workflow continuously — triggers listen until you press **Stop**. The **Run** button inside a node's parameter panel executes only that node once, with whatever input it currently has — handy for testing a single step without starting everything.
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Your first workflow" icon="diagram-project" href="/quickstart">
+    Put the canvas to work in ten minutes.
+  </Card>
+  <Card title="Node catalog" icon="cubes" href="/nodes/overview">
+    Every node, grouped the way the palette groups them.
+  </Card>
+</CardGroup>
