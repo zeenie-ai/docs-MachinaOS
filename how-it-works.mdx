@@ -3,4 +3,49 @@ title: "How OpenCompany works"
 description: "What happens when you run a workflow: nodes, connections, agents, and where your data lives"
 ---
 
-This page is being written.
+OpenCompany turns instructions like "when someone messages my bot, have the AI answer" into a picture you can see and edit. That picture is called a workflow. This page explains the ideas behind it — no technical background needed.
+
+## The big picture
+
+<Frame caption="How a workflow runs, from trigger to result">
+  <img src="/images/diagrams/how-it-works.svg" alt="Diagram showing a trigger starting a workflow, an AI agent doing the work, and the result being delivered" />
+</Frame>
+
+Something happens: a message arrives, or a timer fires. That event wakes up your workflow. The workflow passes the event through a chain of steps. The last step delivers a result — a reply, a file, a log entry.
+
+## Workflows, nodes, and connections
+
+| Term | What it means |
+|------|---------------|
+| Workflow | The whole automation, drawn as a diagram on the canvas |
+| Node | One box in the diagram — one job, like "receive a chat message" or "ask the AI" |
+| Connection | The line between two nodes — it carries the output of one node into the next |
+
+You build workflows by dragging nodes onto the canvas and drawing lines between them. No code required.
+
+## Where the AI comes in
+
+**AI Agents** are the thinking nodes. Each agent has a built-in choice of AI provider and model. It takes whatever text flows into it and produces an answer.
+
+**Models** are the brains agents use — OpenAI, Anthropic, Gemini, and others. OpenCompany supports 12 providers (11 dedicated model nodes, plus xAI through the OpenAI-compatible path), including free local options like Ollama.
+
+**Tools** are extra abilities you plug into an agent — web search, file access, code execution. The agent decides on its own when to use them.
+
+## Everything runs on your computer
+
+OpenCompany is not a cloud service. The app, your workflows, and your API keys (the password-like codes that let OpenCompany use your AI account) all live on your machine. Keys are stored encrypted and are only ever sent to the AI provider you chose.
+
+<Info>
+No account or sign-up is required. You open `http://localhost:3000` in your browser, and everything you see is served from your own computer.
+</Info>
+
+## What's next
+
+<CardGroup cols={2}>
+  <Card title="Choose how to run it" icon="route" href="/choose-how-to-run">
+    On your computer, on a cloud server, or from source.
+  </Card>
+  <Card title="Install OpenCompany" icon="download" href="/installation">
+    Two commands and about five minutes.
+  </Card>
+</CardGroup>

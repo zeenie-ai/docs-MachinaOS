@@ -3,4 +3,120 @@ title: "Add your AI key"
 description: "Connect one AI provider - or run models locally for free with Ollama or LM Studio"
 ---
 
-This page is being written.
+<Info>
+This takes about 2 minutes. You need OpenCompany running in your browser — finish [Installation](/installation) first.
+</Info>
+
+## Why you need one key
+
+Every AI feature in OpenCompany — agents, chat models, skills — runs on a large language model. One API key (a password-like code that lets OpenCompany use your AI account) unlocks all of them.
+
+OpenCompany supports 12 providers (11 dedicated model nodes, plus xAI through the OpenAI-compatible path). Pick whichever provider you already have an account with.
+
+<Tip>
+No provider account? Skip to [Free option: local models](#free-option-local-models) and run models on your own machine at no cost.
+</Tip>
+
+## Add a key
+
+<Steps>
+  <Step title="Open OpenCompany">
+    Go to [http://localhost:3000](http://localhost:3000) in your browser.
+    The workflow canvas loads.
+  </Step>
+  <Step title="Open the credentials modal">
+    Click the key icon in the top toolbar — its tooltip reads **API Credentials**.
+    The **API Credentials** modal opens with a provider list down the left side.
+  </Step>
+  <Step title="Pick a provider">
+    Under the **AI Providers** header in the left sidebar, click your provider — for example **OpenAI** or **Anthropic**.
+    The provider's key form appears on the right.
+
+    <Tip>
+    Can't see your provider? Type its name into the **Search providers...** box above the sidebar.
+    </Tip>
+  </Step>
+  <Step title="Paste your key">
+    Paste your API key into the key field.
+    The key appears masked, and the **Validate** button becomes active.
+  </Step>
+  <Step title="Validate">
+    Click **Validate**.
+    The button changes to **Valid**, and a green **Connected** badge appears on the provider card.
+  </Step>
+</Steps>
+
+<!-- TODO(screenshot): Credentials modal with a Connected provider -->
+
+<Check>
+You see the green **Connected** badge. Every AI node in OpenCompany can now use this provider.
+</Check>
+
+## Where to get a key
+
+Each provider issues keys from its own dashboard. Create an account, generate a key, and copy it before it disappears.
+
+<AccordionGroup>
+  <Accordion title="OpenAI">
+    Create a key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys). Click **Create new secret key** and copy the result immediately.
+  </Accordion>
+  <Accordion title="Anthropic">
+    Sign in at [console.anthropic.com](https://console.anthropic.com). Open the API Keys section and generate a new key.
+  </Accordion>
+  <Accordion title="Gemini">
+    Get a Google Gemini key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). A Google account is all you need.
+  </Accordion>
+  <Accordion title="Groq">
+    Create a key at [console.groq.com/keys](https://console.groq.com/keys). Groq offers a generous free tier for fast open-source models.
+  </Accordion>
+  <Accordion title="OpenRouter">
+    Generate a key at [openrouter.ai/keys](https://openrouter.ai/keys). One OpenRouter key routes to hundreds of models from many labs.
+  </Accordion>
+  <Accordion title="Cerebras">
+    Sign up at [cloud.cerebras.ai](https://cloud.cerebras.ai) and create a key from the dashboard.
+  </Accordion>
+  <Accordion title="DeepSeek">
+    Create a key at [platform.deepseek.com](https://platform.deepseek.com) under the API keys section.
+  </Accordion>
+  <Accordion title="Kimi">
+    Generate a Moonshot AI key at [platform.moonshot.ai](https://platform.moonshot.ai) for Kimi models.
+  </Accordion>
+  <Accordion title="Mistral">
+    Create a key at [console.mistral.ai](https://console.mistral.ai) under API Keys.
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+Cloud providers bill per token used. Most new accounts include free credit, but set a spending limit in the provider's dashboard before heavy use.
+</Warning>
+
+## Free option: local models
+
+Ollama and LM Studio run models on your own hardware. No key, no cost, and your prompts never leave your machine.
+
+<Steps>
+  <Step title="Install a local model app">
+    Install [Ollama](https://ollama.com) or [LM Studio](https://lmstudio.ai), then download a model inside the app.
+    The app starts a local server on your machine.
+  </Step>
+  <Step title="Enter the base URL">
+    In the **API Credentials** modal, pick **Ollama** or **LM Studio** and enter the base URL — for example `http://localhost:11434/v1`.
+    The **Fetch** button becomes active.
+  </Step>
+  <Step title="Fetch your models">
+    Click **Fetch**.
+    OpenCompany detects your loaded models, and the green **Connected** badge appears.
+  </Step>
+</Steps>
+
+## Your keys stay on your computer
+
+<Note>
+OpenCompany encrypts every key with Fernet (strong symmetric encryption) and stores it in a local database on your machine. Keys never leave your computer and are never sent to OpenCompany servers.
+</Note>
+
+## Next step
+
+<Card title="Your first chat" icon="message" href="/first-chat">
+Say hello to your AI assistant and watch your first workflow run.
+</Card>

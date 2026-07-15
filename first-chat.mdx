@@ -3,4 +3,73 @@ title: "Your first chat"
 description: "Say hello to your AI assistant and see a workflow run for the first time"
 ---
 
-This page is being written.
+<Info>
+This takes about 2 minutes. You need OpenCompany [installed](/installation) and one AI key added (or a local model connected) — see [Add your AI key](/add-api-keys).
+</Info>
+
+## What you'll see on first launch
+
+The first time you open `http://localhost:3000`, the **Welcome Guide** opens over the canvas. It has five short steps: **Welcome**, **Concepts**, **API Keys**, **Canvas**, and **Get Started**. Click **Next** to walk through them, or **Skip for now** — you can bring it back any time from Settings, under Help, with the **Replay** button next to **Replay Welcome Guide**.
+
+The API Keys step has an **Open Credentials** button that jumps straight to the key setup from [the previous page](/add-api-keys).
+
+## The three example workflows
+
+OpenCompany ships with three ready-made workflows. They load automatically on first launch and appear in the left sidebar.
+
+<Frame caption="The three workflows that ship with OpenCompany">
+  <img src="/images/diagrams/default-workflows.svg" alt="Diagram of the three example workflows: AI Assistant, AI Employee, and Claude Assistant" />
+</Frame>
+
+- **AI Assistant** — a personal assistant with chat, web search, and file tools. Start here: its core works with just one AI key.
+- **AI Employee** — a multi-agent showcase that coordinates specialist agents. It needs several extra accounts; explore it later.
+- **Claude Assistant** — the same idea built around the Claude Code agent; it needs a Claude subscription or API access.
+
+## Run your first chat
+
+<Warning>
+You need one AI key first. If you skipped it, do [Add your AI key](/add-api-keys) now — it takes 2 minutes.
+</Warning>
+
+<Steps>
+  <Step title="Open the AI Assistant workflow">
+    Click **AI Assistant** in the left sidebar.
+    The workflow's nodes appear on the canvas.
+  </Step>
+  <Step title="Start the workflow">
+    Press the green **Start** button in the top toolbar.
+    The button changes to **Stop**, and the Chat Trigger node begins a gentle pulse — it is listening.
+  </Step>
+  <Step title="Open the chat panel">
+    Click the **Chat / Console** bar at the bottom of the screen.
+    The panel expands: a **Chat** box on the left, **Console** and **Terminal** tabs on the right.
+  </Step>
+  <Step title="Say hello">
+    Type `Hello! What can you do?` into the box that reads **Type a message...** and press **Send** (or Enter).
+    Your message appears in the Chat pane.
+  </Step>
+  <Step title="Read the reply in the Console tab">
+    Click the **Console** tab on the right side of the panel.
+    The AI's answer appears there within a few seconds.
+  </Step>
+</Steps>
+
+<!-- TODO(screenshot): AI Assistant workflow running with the Chat / Console panel open -->
+
+<Note>
+The reply appears in the **Console** tab, not as a chat bubble. The Chat pane shows what you sent; the workflow's Console node prints what the AI answered.
+</Note>
+
+<Check>
+You sent a message, the nodes lit up as they worked, and the AI answered in the Console tab. You have run your first workflow.
+</Check>
+
+## What just happened
+
+Your message woke the **Chat Trigger** node. The trigger handed your text to the **AI Agent**, which asked your chosen model for an answer. The agent passed that answer to the **Console** node, which printed it in the Console tab.
+
+## Next step
+
+<Card title="Build your own workflow" icon="diagram-project" href="/quickstart">
+  Recreate that chat pipeline yourself, from an empty canvas, in about ten minutes.
+</Card>
