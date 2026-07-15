@@ -1,183 +1,174 @@
 ---
-title: Installation
-description: Set up OpenCompany on your local machine or server
+title: "Install OpenCompany"
+description: "Two commands and about five minutes - no login, no account, everything on your machine"
 ---
 
-# Installation
+<Info>
+**Takes:** 2-10 minutes, mostly automatic downloads. **You need:** Node.js 22+ and Python 3.12+ (checked below). **Disk:** about 1 GB. No git, no build tools, no account.
+</Info>
 
-OpenCompany runs locally with the `company` CLI. For production, deploy to a cloud VM with `company deploy`.
+<Note>
+No command-line experience? You only need to copy and paste three lines into the terminal (the text command app — **Terminal** on macOS, **PowerShell** on Windows). Each step below tells you exactly what you should see.
+</Note>
 
-## Prerequisites
+## Before you install
 
-- Node.js 22+
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/) (Python package manager)
-- Git
+OpenCompany needs two free tools. Check whether you already have them:
 
-## Quick Install
+<CodeGroup>
+```powershell Windows
+node --version
+```
+```bash macOS
+node --version
+```
+```bash Linux
+node --version
+```
+</CodeGroup>
 
-<Tabs>
-  <Tab title="Install the CLI">
-    Install OpenCompany globally and start it:
+You should see `v22` or higher. Then:
 
+<CodeGroup>
+```powershell Windows
+python --version
+```
+```bash macOS
+python3 --version
+```
+```bash Linux
+python3 --version
+```
+</CodeGroup>
+
+You should see `Python 3.12` or higher.
+
+Missing one? Install Node.js from [nodejs.org](https://nodejs.org) (choose the LTS version) and Python from [python.org/downloads](https://www.python.org/downloads/). On Windows, tick **Add python.exe to PATH** in the Python installer. Then open a new terminal window and re-check.
+
+<Tip>
+Everything else — including the uv Python package manager — installs itself automatically.
+</Tip>
+
+## Install (3 steps)
+
+<Steps>
+  <Step title="Install the app">
     ```bash
     npm install -g @zeenie-ai/opencompany
+    ```
+
+    Downloads run for a few minutes (Python packages and the workflow engine, ~1 GB total). At the end you should see `Run: company start`.
+  </Step>
+  <Step title="Start it">
+    ```bash
     company start
     ```
 
-    The app will be available at:
-    - Frontend: `http://localhost:3000`
-    - Backend: `http://localhost:3010`
-    - Node.js executor: `http://localhost:3020`
-    - WhatsApp: `http://localhost:9400`
-    - Temporal Web UI: `http://localhost:8080`
+    You should see:
 
-    <Tip>
-      After the global install the binary is `company`. The old `machina` command still exists only as a deprecated alias.
-    </Tip>
-  </Tab>
-  <Tab title="From source">
-    ```bash
-    # Clone the repository
-    git clone https://github.com/zeenie-ai/opencompany.git
-    cd opencompany
-
-    # Build (installs client + server dependencies via uv)
-    npm run build
-
-    # Start all services (production mode)
-    npm run start
-
-    # Or start with hot-reload for development
-    npm run dev
     ```
-
-    Under the hood the npm scripts call the `company` CLI (`python -m cli start` / `dev` / `build`). The backend is managed by [uv](https://docs.astral.sh/uv/) (`uv sync` against `server/uv.lock`), not pip.
-  </Tab>
-</Tabs>
-
-## CLI Commands
-
-The `company` CLI drives every lifecycle action (`machina` still exists only as a deprecated alias):
-
-| Command | Description |
-|---------|-------------|
-| `company start` | Start all services (production mode, clean output) |
-| `company dev` | Start with hot-reload for development (`--force` re-bundles Vite deps, `--daemon` binds the backend to 0.0.0.0) |
-| `company build` | Install dependencies and build for production |
-| `company serve` | Serve API + WebSocket + SPA on a single public port |
-| `company stop` | Stop all running services |
-| `company clean` | Clean build artifacts |
-| `company deploy` | Provision a cloud VM running OpenCompany (`up` / `status` / `destroy`) |
-| `company daemon` | Run the backend as a detached process (`start` / `stop` / `status` / `restart`) |
-| `company version sync` | Sync package versions from the latest git tag |
-| `company docs nodes` | Rebuild (or `--check`) the per-node documentation index |
-
-Useful flags: `--verbose` / `-v` (full service logs), `--skip-whatsapp` (skip the WhatsApp service).
-
-## Environment Configuration
-
-Copy the environment template:
-
-```bash
-cp .env.template .env
-```
-
-### Key Settings
-
-<ParamField path="VITE_CLIENT_PORT" type="number" default="3000">
-  Frontend development server port
-</ParamField>
-
-<ParamField path="PYTHON_BACKEND_PORT" type="number" default="3010">
-  Backend API server port
-</ParamField>
-
-<ParamField path="AUTH_MODE" type="string" default="single">
-  Authentication mode: `single` (first user is owner) or `multi` (open registration)
-</ParamField>
-
-<ParamField path="REDIS_ENABLED" type="boolean" default="false">
-  Enable Redis cache. Set to `true` for production.
-</ParamField>
-
-<ParamField path="VITE_ANDROID_RELAY_URL" type="string">
-  WebSocket URL for remote Android device connections
-</ParamField>
-
-### Full Environment Example
-
-```bash
-# Ports
-VITE_CLIENT_PORT=3000
-PYTHON_BACKEND_PORT=3010
-
-# Authentication
-AUTH_MODE=single
-JWT_SECRET_KEY=your-secret-key-min-32-chars
-
-# Cache (production)
-REDIS_ENABLED=false
-REDIS_URL=redis://localhost:6379
-
-# Optional API Keys
-OPENAI_API_KEY=
-ANTHROPIC_API_KEY=
-GOOGLE_AI_API_KEY=
-GOOGLE_MAPS_API_KEY=
-```
-
-## Verify Installation
-
-1. Open `http://localhost:3000` in your browser
-2. You should see the OpenCompany workflow editor
-3. Check the backend health: `curl http://localhost:3010/health`
+    OpenCompany v0.0.94
+    Frontend:  http://localhost:3000
+    Backend:   http://localhost:3010
+    ```
+  </Step>
+  <Step title="Open it">
+    Go to [http://localhost:3000](http://localhost:3000) in your browser.
+    The workflow canvas appears — no login needed — and the **Welcome Guide** walks you through the basics.
+  </Step>
+</Steps>
 
 <Check>
-If you see the workflow canvas with the component palette, installation is complete!
+You see the canvas with a component palette on the left and three example workflows in the sidebar. You're in.
 </Check>
 
-## Production Deployment
+## One-command installers
 
-The recommended way to run OpenCompany in production is `company deploy`, which provisions a login-gated cloud VM (currently Google Cloud) using your cloud CLI plus Terraform, then runs OpenCompany on a single port via `company serve` under systemd:
+Don't want to install Node and Python yourself? These scripts install the prerequisites AND OpenCompany in one go:
 
-```bash
-company deploy up --provider gcp --owner-email you@example.com   # provision + install + print URL/creds
-company deploy status                                            # show URL + health
-company deploy destroy                                           # tear down
+<CodeGroup>
+```powershell Windows
+iwr -useb https://raw.githubusercontent.com/zeenie-ai/OpenCompany/main/install.ps1 | iex
 ```
+```bash macOS
+curl -fsSL https://raw.githubusercontent.com/zeenie-ai/OpenCompany/main/install.sh | bash
+```
+```bash Linux
+curl -fsSL https://raw.githubusercontent.com/zeenie-ai/OpenCompany/main/install.sh | bash
+```
+</CodeGroup>
 
-## Troubleshooting
+When the script finishes, run `company start` and open `http://localhost:3000`.
 
-<Accordion title="Port already in use">
-  Change the port in `.env`:
-  ```bash
-  VITE_CLIENT_PORT=3001
-  PYTHON_BACKEND_PORT=3011
-  ```
-  OpenCompany also uses ports 3020 (Node.js executor), 9400 (WhatsApp), 7233 (Temporal gRPC), 8080 (Temporal Web UI), and 6379 (Redis, when enabled).
+<Accordion title="Windows note: slow first install or startup">
+Windows Defender scans every new Python file, which can make the first install or start slow. If it drags: open **Windows Security** → **Virus &amp; threat protection** → **Manage settings** → **Exclusions**, and add the `server\.venv` folder inside your OpenCompany install. A reboot after first install also helps.
 </Accordion>
 
-<Accordion title="Python dependencies fail">
-  The backend is managed by [uv](https://docs.astral.sh/uv/). Sync the environment from the lock file:
+## Everyday commands
+
+| Command | What it does |
+|---------|--------------|
+| `company start` | Start everything (production mode) |
+| `company stop` | Stop everything |
+| `company doctor` | Check system dependencies and project health |
+| `company build` | Rebuild after an update |
+| `company clean` | Remove build artifacts for a fresh rebuild |
+| `company deploy up/status/destroy` | Put OpenCompany on a cloud server ([guide](/deployment/production)) |
+| `company version` | Show the installed version |
+
+<Note>
+The old `machina` command still works as a deprecated alias of `company`.
+</Note>
+
+## Settings you might change later
+
+OpenCompany creates its settings file (`.env`) automatically — you do not need to touch it to get started. Two settings people ask about:
+
+<AccordionGroup>
+  <Accordion title="Ports">
+    The app uses port 3000 (what you open in the browser) and 3010 (the backend). If another program owns one of them, edit the `.env` file inside the install folder and change `VITE_CLIENT_PORT` or `PYTHON_BACKEND_PORT`, then restart.
+  </Accordion>
+  <Accordion title="Login screen">
+    Local installs have no login (`VITE_AUTH_ENABLED=false` by default) — the app is only reachable from your own machine. Cloud deployments created with `company deploy` turn the login gate on automatically. To require a login locally, set `VITE_AUTH_ENABLED=true` in `.env` and restart.
+  </Accordion>
+</AccordionGroup>
+
+## For developers
+
+<Accordion title="Run from source (contributors)">
+  This path needs git and pnpm in addition to Node 22+ and Python 3.12+:
+
   ```bash
-  cd server
-  uv sync
+  git clone https://github.com/zeenie-ai/opencompany.git
   ```
-  This creates `server/.venv` against `server/uv.lock`. Make sure `uv` is installed and on your PATH first.
+
+  ```bash
+  cd opencompany
+  ```
+
+  ```bash
+  npm install -g pnpm
+  ```
+
+  ```bash
+  pnpm run build
+  ```
+
+  ```bash
+  pnpm run dev
+  ```
+
+  `pnpm run dev` starts the hot-reload dev stack (Vite + backend + workflow engine). The npm scripts are thin wrappers over the `company` CLI (`python -m cli dev`). The backend environment is managed by [uv](https://docs.astral.sh/uv/) against `server/uv.lock` — `pnpm run build` sets it up for you. Handy dev flags: `company dev --force` (re-bundle frontend dependencies) and `company dev --daemon` (expose the backend on your network).
 </Accordion>
 
-<Accordion title="Services won't start">
-  Stop everything cleanly, then start again with full logs:
-  ```bash
-  company stop
-  company start -v
-  ```
-  If a build looks stale, run `company clean` before `company build`.
-</Accordion>
+## If something went wrong
 
-## Next Steps
+<Card title="Troubleshooting" icon="life-ring" href="/troubleshooting">
+  Version checks, port conflicts, Defender slowdowns, and clean rebuilds — with exact commands.
+</Card>
 
-<Card title="Quick Start" icon="rocket" href="/quickstart">
-  Build your first workflow in 5 minutes
+## Next step
+
+<Card title="Add your AI key" icon="key" href="/add-api-keys">
+  Connect one AI provider (2 minutes) — or run free local models.
 </Card>
