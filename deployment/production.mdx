@@ -1,23 +1,23 @@
 ---
 title: Production Deployment
-description: Deploy MachinaOs to a cloud VM with one command using machina deploy
+description: Deploy OpenCompany to a cloud VM with one command using company deploy
 ---
 
 # Production Deployment
 
-The recommended way to run MachinaOs in production is the built-in self-deploy CLI. One command provisions a login-gated MachinaOs VM on a cloud provider, installs the app, and runs it behind the login screen.
+The recommended way to run OpenCompany in production is the built-in self-deploy CLI. One command provisions a login-gated OpenCompany VM on a cloud provider, installs the app, and runs it behind the login screen.
 
 ```bash
-machina deploy up --provider gcp --owner-email you@example.com
+company deploy up --provider gcp --owner-email you@example.com
 ```
 
 Behind the scenes this runs two stages:
 
 1. **Cloud CLI (auth + context)** - the provider adapter (currently `gcloud`; AWS is a follow-on) verifies your cloud CLI is installed and authenticated, resolves the project/region/zone, checks Application Default Credentials, and enables the required cloud APIs.
-2. **Terraform** - generates fresh secrets and owner credentials, packages your local build, then creates all resources: the VM (always named `machinaos`), firewall rule, artifact bucket, and service account. A cloud-init startup script installs Node.js and uv, installs the package, and runs `machina serve` under systemd on a single public port.
+2. **Terraform** - generates fresh secrets and owner credentials, packages your local build, then creates all resources: the VM (resource id `opencompany` for new deployments; pre-rebrand deployments keep `machinaos`, retained for upgrade compatibility), firewall rule, artifact bucket, and service account. A cloud-init startup script installs Node.js and uv, installs the package, and runs `company serve` under systemd on a single public port.
 
 <Info>
-`machina serve` fronts the API, WebSocket, and the built single-page app plus the Node.js sidecar all on one port. No separate frontend container or reverse proxy is required for the standard path.
+`company serve` fronts the API, WebSocket, and the built single-page app plus the Node.js sidecar all on one port. No separate frontend container or reverse proxy is required for the standard path.
 </Info>
 
 ## Prerequisites
@@ -35,7 +35,7 @@ Behind the scenes this runs two stages:
 ## Deploy
 
 ```bash
-machina deploy up --provider gcp --owner-email you@example.com
+company deploy up --provider gcp --owner-email you@example.com
 ```
 
 When it finishes it prints the external IP, the URL, and the owner login credentials. If you did not pass `--owner-password`, a strong password is generated and printed once - save it.
@@ -91,31 +91,31 @@ The deploy path always provisions a login-gated, single-owner instance:
 - Fresh `JWT_SECRET_KEY`, `SECRET_KEY`, and `API_KEY_ENCRYPTION_KEY` are minted per deployment.
 
 <Warning>
-By default the VM is reached over plain HTTP on its IP, so `JWT_COOKIE_SECURE` is set to `false`. Put a domain and TLS terminator in front (see the self-managed section below) and flip `JWT_COOKIE_SECURE=true` once HTTPS is in place.
+By default the VM is reached over plain HTTP on its IP, so `JWT_COOKIE_SECURE` is set to `false`. Put a domain and TLS terminator in front and flip `JWT_COOKIE_SECURE=true` once HTTPS is in place.
 </Warning>
 
 ## Status and Health
 
 ```bash
-machina deploy status
+company deploy status
 ```
 
 Prints the deployment's URL and polls `/health`. The VM takes a few minutes on first boot to install Node, npm, and build the app.
 
 ## Updating
 
-Re-running `deploy up` re-applies Terraform safely (the VM stays named `machinaos`). To ship a new local build, run `machina deploy up` again from an updated checkout.
+Re-running `deploy up` re-applies Terraform safely (the VM keeps its durable resource id). To ship a new local build, run `company deploy up` again from an updated checkout.
 
 ## Tearing Down
 
 ```bash
-machina deploy destroy
+company deploy destroy
 ```
 
 This runs `terraform destroy` and clears the local deployment state.
 
 <Info>
-Deployment state lives at `<user-data>/deploy/machinaos/`. It is preserved by `machina clean` - only `machina deploy destroy` removes it, because it tracks live cloud resources.
+Deployment state lives at `<user-data>/deploy/opencompany/` (pre-rebrand deployments keep `deploy/machinaos/`, retained for upgrade compatibility). It is preserved by `company clean` - only `company deploy destroy` removes it, because it tracks live cloud resources.
 </Info>
 
 ## Verify
@@ -145,279 +145,13 @@ SSH key authentication only on the VM (disable password auth)
 
 ---
 
-## Self-Managed Deployment (Legacy)
+## Self-Managed Deployment
 
-If you prefer to run MachinaOs on a server you manage yourself with Docker Compose behind nginx and SSL, the following is a reference topology. The `machina deploy` path above is the recommended and maintained approach; the Docker Compose stack is a legacy reference.
-
-### Server Requirements
-
-- Ubuntu 20.04+ or similar Linux
-- 2+ CPU cores
-- 2GB+ RAM
-- Docker and Docker Compose
-- Domain name (for SSL)
-
-### Topology
-
-```
-Internet --> nginx (SSL) --> Docker Containers
-                   |
-                   +--> frontend (3000)
-                   +--> backend (3010)
-                   +--> whatsapp (9400)
-                   +--> redis (6379)
-```
-
-### Server Setup
-
-```bash
-# Update system
-sudo apt update && sudo apt upgrade -y
-
-# Install Docker
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-
-# Install Docker Compose
-sudo apt install docker-compose-plugin
-
-# Install nginx
-sudo apt install nginx certbot python3-certbot-nginx
-```
-
-### Clone and Configure
-
-```bash
-# Clone repository
-cd /opt
-sudo git clone https://github.com/trohitg/MachinaOs.git
-cd MachinaOs
-
-# Create production environment file from the template
-sudo cp .env.template .env.prod
-sudo nano .env.prod
-```
-
-<Info>
-Environment files bootstrap from `.env.template` (not `.env.example`). Copy it and override the values you need.
-</Info>
-
-### Production Environment
-
-```bash
-# .env.prod
-VITE_CLIENT_PORT=3000
-PYTHON_BACKEND_PORT=3010
-WHATSAPP_RPC_PORT=9400
-
-# Security - CHANGE THESE
-SECRET_KEY=your-random-64-char-string
-JWT_SECRET_KEY=your-random-32-char-string
-API_KEY_ENCRYPTION_KEY=your-random-64-char-string
-
-# Authentication
-AUTH_MODE=single
-JWT_COOKIE_SECURE=true
-JWT_COOKIE_SAMESITE=strict
-
-# Cache
-REDIS_ENABLED=true
-REDIS_URL=redis://redis:6379
-
-# CORS - your domain
-CORS_ORIGINS=["https://your-domain.com"]
-
-# Logging
-LOG_LEVEL=INFO
-DEBUG=false
-```
-
-<Warning>
-Generate secure random strings for SECRET_KEY, JWT_SECRET_KEY, and API_KEY_ENCRYPTION_KEY. Never use default values in production.
-</Warning>
-
-### Build and Start
-
-```bash
-# Build production images
-docker-compose -f docker-compose.prod.yml build
-
-# Start services
-docker-compose -f docker-compose.prod.yml up -d
-
-# Verify containers
-docker-compose -f docker-compose.prod.yml ps
-```
-
-### Configure nginx
-
-Create nginx configuration:
-
-```bash
-sudo nano /etc/nginx/sites-available/machinaos
-```
-
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    location / {
-        return 301 https://$server_name$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl http2;
-    server_name your-domain.com;
-
-    # SSL configuration (will be added by certbot)
-
-    # Frontend
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Backend API
-    location /api/ {
-        proxy_pass http://127.0.0.1:3010/api/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # WebSocket
-    location /ws/ {
-        proxy_pass http://127.0.0.1:3010/ws/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_read_timeout 86400;
-    }
-
-    # Webhooks
-    location /webhook/ {
-        proxy_pass http://127.0.0.1:3010/webhook/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-
-    # Health check
-    location /health {
-        proxy_pass http://127.0.0.1:3010/health;
-    }
-}
-```
-
-Enable the site:
-
-```bash
-sudo ln -s /etc/nginx/sites-available/machinaos /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-### SSL Certificate
-
-```bash
-# Get SSL certificate from Let's Encrypt
-sudo certbot --nginx -d your-domain.com
-
-# Auto-renewal is configured automatically
-# Test renewal
-sudo certbot renew --dry-run
-```
-
-### Firewall
-
-```bash
-# Allow required ports
-sudo ufw allow 22/tcp   # SSH
-sudo ufw allow 80/tcp   # HTTP (redirect)
-sudo ufw allow 443/tcp  # HTTPS
-sudo ufw enable
-```
-
-### Maintenance
-
-#### Updates
-
-```bash
-cd /opt/MachinaOs
-
-# Pull latest code
-git pull
-
-# Rebuild and restart
-docker-compose -f docker-compose.prod.yml down
-docker-compose -f docker-compose.prod.yml up --build -d
-```
-
-#### Backups
-
-```bash
-# Backup database
-docker cp machinaos-backend-1:/app/data/workflow.db ./backup/
-
-# Backup WhatsApp session
-docker cp machinaos-whatsapp-1:/app/data ./backup/whatsapp/
-```
-
-#### Monitoring
-
-```bash
-# Check resource usage
-docker stats --no-stream
-
-# Check logs for errors
-docker-compose -f docker-compose.prod.yml logs --tail=100 backend
-```
-
-### Troubleshooting
-
-<Accordion title="502 Bad Gateway">
-  - Check if containers are running: `docker-compose ps`
-  - Verify ports match nginx config
-  - Check backend logs: `docker-compose logs backend`
-</Accordion>
-
-<Accordion title="WebSocket connection fails">
-  - Verify nginx WebSocket config has Upgrade headers
-  - Check proxy_read_timeout is set
-  - Ensure firewall allows connections
-</Accordion>
-
-<Accordion title="SSL certificate issues">
-  ```bash
-  # Renew certificate manually
-  sudo certbot renew --force-renewal
-  sudo systemctl reload nginx
-  ```
-</Accordion>
-
-<Accordion title="High memory usage">
-  - Check for memory leaks: `docker stats`
-  - Restart containers: `docker-compose restart`
-  - Increase server RAM if needed
-</Accordion>
+Earlier releases shipped a Docker Compose topology; Docker support has been removed. Deploy with `company deploy` (Terraform -> GCP VM -> systemd) as described above.
 
 ## Related
 
 <CardGroup cols={2}>
-  <Card title="Docker Setup" icon="docker" href="/deployment/docker">
-    Local Docker development
-  </Card>
   <Card title="Installation" icon="gear" href="/installation">
     Environment variables and local setup
   </Card>

@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "palm",
-  "name": "MachinaOs",
+  "name": "OpenCompany",
   "colors": {
     "primary": "#BD93F9",
     "light": "#FF79C6",
@@ -23,7 +23,12 @@
         "groups": [
           {
             "group": "Getting Started",
-            "pages": ["introduction", "installation", "quickstart", "architecture"]
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart",
+              "architecture"
+            ]
           },
           {
             "group": "Tutorials",
@@ -51,11 +56,15 @@
           },
           {
             "group": "Deployment",
-            "pages": ["deployment/docker", "deployment/production"]
+            "pages": [
+              "deployment/production"
+            ]
           },
           {
             "group": "FAQ",
-            "pages": ["faq"]
+            "pages": [
+              "faq"
+            ]
           }
         ]
       }
@@ -65,18 +74,18 @@
     "links": [
       {
         "label": "GitHub",
-        "href": "https://github.com/trohitg/MachinaOs"
+        "href": "https://github.com/zeenie-ai/opencompany"
       }
     ]
   },
   "footerSocials": {
-    "github": "https://github.com/trohitg/MachinaOs"
+    "github": "https://github.com/zeenie-ai/opencompany"
   },
   "feedback": {
     "thumbsRating": true
   },
   "search": {
-    "prompt": "Search MachinaOs docs..."
+    "prompt": "Search OpenCompany docs..."
   },
   "styling": {
     "codeBlock": {

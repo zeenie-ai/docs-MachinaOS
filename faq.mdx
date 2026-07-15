@@ -1,35 +1,35 @@
 ---
 title: FAQ
-description: Frequently asked questions about MachinaOs
+description: Frequently asked questions about OpenCompany
 ---
 
 # Frequently Asked Questions
 
-Common questions and troubleshooting for MachinaOs.
+Common questions and troubleshooting for OpenCompany.
 
 ## General
 
 <AccordionGroup>
-  <Accordion title="What is MachinaOs?">
-    MachinaOs is an open-source workflow automation platform inspired by n8n. It lets you create visual workflows that connect AI models, messaging services, devices, and APIs using a drag-and-drop interface.
+  <Accordion title="What is OpenCompany?">
+    OpenCompany is an open-source workflow automation platform inspired by n8n. It lets you create visual workflows that connect AI models, messaging services, devices, and APIs using a drag-and-drop interface.
   </Accordion>
 
-  <Accordion title="Is MachinaOs free to use?">
-    Yes, MachinaOs is open-source and free to self-host. You only pay for external services you use (AI API calls, cloud hosting, etc.).
+  <Accordion title="Is OpenCompany free to use?">
+    Yes, OpenCompany is open-source and free to self-host. You only pay for external services you use (AI API calls, cloud hosting, etc.).
   </Accordion>
 
-  <Accordion title="What's the difference between MachinaOs and n8n?">
-    MachinaOs is inspired by n8n's node-based approach but focuses on:
-    - Deep AI integration (11 LLM providers with memory, tools, and skills)
+  <Accordion title="What's the difference between OpenCompany and n8n?">
+    OpenCompany is inspired by n8n's node-based approach but focuses on:
+    - Deep AI integration (12 LLM providers with memory, tools, and skills)
     - WhatsApp, Telegram, and Twitter/X automation
     - Android device control
     - Real-time WebSocket communication
 
-    MachinaOs is built with React and Python, while n8n uses Node.js.
+    OpenCompany is built with React and Python, while n8n uses Node.js.
   </Accordion>
 
-  <Accordion title="Can I use MachinaOs commercially?">
-    Yes, MachinaOs is released under an open-source license. Check the repository for specific license terms.
+  <Accordion title="Can I use OpenCompany commercially?">
+    Yes, OpenCompany is released under an open-source license. Check the repository for specific license terms.
   </Accordion>
 </AccordionGroup>
 
@@ -48,18 +48,18 @@ Common questions and troubleshooting for MachinaOs.
     - SSD storage
   </Accordion>
 
-  <Accordion title="Can I run MachinaOs on Windows?">
-    Yes. MachinaOs runs natively on Windows with Node.js 22+ and Python 3.12+ installed. macOS, Linux, WSL2, and Git Bash are also supported. All launch scripts are cross-platform.
+  <Accordion title="Can I run OpenCompany on Windows?">
+    Yes. OpenCompany runs natively on Windows with Node.js 22+ and Python 3.12+ installed. macOS, Linux, WSL2, and Git Bash are also supported. All launch scripts are cross-platform.
   </Accordion>
 
-  <Accordion title="How do I update MachinaOs?">
+  <Accordion title="How do I update OpenCompany?">
     ```bash
-    cd MachinaOs
+    cd opencompany
     git pull
-    npx machina clean
-    npx machina start
+    company clean
+    company start
     ```
-    `machina start` auto-installs any new dependencies before launching.
+    `company start` auto-installs any new dependencies before launching.
   </Accordion>
 
   <Accordion title="Port 3000 is already in use">
@@ -111,11 +111,11 @@ Common questions and troubleshooting for MachinaOs.
 
 <AccordionGroup>
   <Accordion title="Where do I add my API keys?">
-    Click the **key icon** in the toolbar to open the Credentials panel. MachinaOs supports 11 LLM providers plus service credentials, including:
+    Click the **key icon** in the toolbar to open the Credentials panel. OpenCompany supports 12 LLM providers plus service credentials, including:
     - OpenAI
     - Anthropic (Claude)
     - Google AI (Gemini)
-    - OpenRouter, Groq, Cerebras, DeepSeek, Kimi (Moonshot), Mistral
+    - OpenRouter, xAI, Groq, Cerebras, DeepSeek, Kimi (Moonshot), Mistral
     - Ollama and LM Studio (local servers — enter the server URL, no cloud key needed)
     - Google Workspace, Google Maps, Twitter/X, Telegram, WhatsApp, and other services
 
@@ -126,7 +126,7 @@ Common questions and troubleshooting for MachinaOs.
     Yes, API keys are:
     - Encrypted before storage
     - Stored locally in SQLite
-    - Never sent to MachinaOs servers
+    - Never sent to OpenCompany servers
     - Only transmitted to the respective AI providers
   </Accordion>
 
@@ -162,7 +162,7 @@ Common questions and troubleshooting for MachinaOs.
   <Accordion title="WhatsApp disconnects frequently">
     - Ensure your phone has stable internet
     - Don't use WhatsApp Web simultaneously
-    - Keep the MachinaOs server running continuously
+    - Keep the OpenCompany server running continuously
     - Check if you're logged out on your phone
   </Accordion>
 
@@ -244,25 +244,25 @@ Common questions and troubleshooting for MachinaOs.
 
 <AccordionGroup>
   <Accordion title="What's the recommended way to deploy to the cloud?">
-    The current path is the built-in `machina deploy` CLI, which provisions a login-gated VM and installs MachinaOs automatically:
+    The current path is the built-in `company deploy` CLI, which provisions a login-gated VM and installs OpenCompany automatically:
     ```bash
-    npx machina deploy up --provider gcp --owner-email you@example.com
-    npx machina deploy status
-    npx machina deploy destroy
+    company deploy up --provider gcp --owner-email you@example.com
+    company deploy status
+    company deploy destroy
     ```
-    This uses your cloud CLI plus Terraform to stand up a single-port server running `machina serve` under systemd, with authentication enabled and an owner credential generated at deploy time. See [Production Deployment](/deployment/production) for details. Docker Compose remains available as a legacy option (see [Docker Deployment](/deployment/docker)).
+    This uses your cloud CLI plus Terraform to stand up a single-port server running `company serve` under systemd, with authentication enabled and an owner credential generated at deploy time. See [Production Deployment](/deployment/production) for details. Docker support was removed; deployment is `company deploy` (Terraform provisioning a GCP VM).
   </Accordion>
 
   <Accordion title="Can I run it manually without the CLI?">
     Yes. The requirements are Node.js 22+ and Python 3.12+. The backend uses `uv` for Python dependencies (not pip). For local development, the simplest path is:
     ```bash
-    npx machina start   # or: npx machina dev
+    company start   # or: company dev
     ```
-    `machina start` frees ports, auto-installs dependencies (`uv sync` for Python, `npm` for the frontend and Node executor), and launches everything. Environment variables bootstrap from `.env.template`.
+    `company start` frees ports, auto-installs dependencies (`uv sync` for Python, `npm` for the frontend and Node executor), and launches everything. Environment variables bootstrap from `.env.template`.
   </Accordion>
 
   <Accordion title="How much does hosting cost?">
-    MachinaOs can run on a small VM:
+    OpenCompany can run on a small VM:
     - GCP e2-micro / e2-small: low single-digit dollars per month
     - AWS EC2 t3.micro / small: ~$10/month
     - Self-hosted: hardware cost only
@@ -271,7 +271,7 @@ Common questions and troubleshooting for MachinaOs.
   </Accordion>
 
   <Accordion title="Where is my data stored?">
-    MachinaOs keeps its state under the data directory (`~/.machina/` by default): the SQLite databases (`workflow.db`, `credentials.db`, `temporal.db`), per-workflow workspaces, and the WhatsApp session. To back up, copy that directory while the server is stopped. API keys and OAuth tokens live encrypted in `credentials.db`.
+    OpenCompany keeps its state under the data directory (`~/.opencompany/` by default; a pre-rebrand `~/.machina/` directory is still auto-discovered for upgrades): the SQLite databases (`workflow.db`, `credentials.db`, `temporal.db`), per-workflow workspaces, and the WhatsApp session. To back up, copy that directory while the server is stopped. API keys and OAuth tokens live encrypted in `credentials.db`.
   </Accordion>
 </AccordionGroup>
 
@@ -293,7 +293,7 @@ Common questions and troubleshooting for MachinaOs.
   </Accordion>
 
   <Accordion title="High memory usage">
-    - Restart the services: `npx machina stop` then `npx machina start`
+    - Restart the services: `company stop` then `company start`
     - Check for runaway workflows
     - Limit the conversation memory window size
     - Increase server RAM if needed
@@ -301,7 +301,7 @@ Common questions and troubleshooting for MachinaOs.
 
   <Accordion title="Database locked error">
     SQLite doesn't handle concurrent writes well. If you see "database is locked":
-    - Restart the backend (`npx machina stop` then `npx machina start`)
+    - Restart the backend (`company stop` then `company start`)
     - On production, enable Redis (`REDIS_ENABLED=true`) so execution state uses Redis instead of SQLite
   </Accordion>
 </AccordionGroup>
@@ -309,7 +309,7 @@ Common questions and troubleshooting for MachinaOs.
 ## Getting Help
 
 <CardGroup cols={2}>
-  <Card title="GitHub Issues" icon="github" href="https://github.com/trohitg/MachinaOs/issues">
+  <Card title="GitHub Issues" icon="github" href="https://github.com/zeenie-ai/opencompany/issues">
     Report bugs and request features
   </Card>
   <Card title="Documentation" icon="book" href="/introduction">

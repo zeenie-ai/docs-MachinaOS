@@ -1,15 +1,15 @@
 ---
 title: Architecture
-description: Deep dive into MachinaOs system architecture, execution engine, AI agents, and cache/security layers (plugin-first, WebSocket-first, Temporal execution)
+description: Deep dive into OpenCompany system architecture, execution engine, AI agents, and cache/security layers (plugin-first, WebSocket-first, Temporal execution)
 ---
 
 # Architecture
 
-A detailed look at how MachinaOs works under the hood. For contributors, system designers, and the curious. For a navigable tour with hyperlinks, see the [DeepWiki page](https://deepwiki.com/trohitg/MachinaOS).
+A detailed look at how OpenCompany works under the hood. For contributors, system designers, and the curious. For a navigable tour with hyperlinks, see the [DeepWiki page](https://deepwiki.com/zeenie-ai/OpenCompany).
 
 ## System Overview
 
-MachinaOs is three loosely-coupled tiers talking over a single persistent WebSocket connection:
+OpenCompany is three loosely-coupled tiers talking over a single persistent WebSocket connection:
 
 ```
 +------------------------------------------------------------------------+
@@ -40,7 +40,7 @@ MachinaOs is three loosely-coupled tiers talking over a single persistent WebSoc
 +------------------------------------------------------------------------+
                              |
                              v
-   External services: OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek,
+   External services: OpenAI, Anthropic, Gemini, OpenRouter, xAI, DeepSeek,
    Kimi, Mistral, Groq, Cerebras, plus local Ollama / LM Studio servers,
    Google Workspace, WhatsApp, Telegram, Twitter/X, Brave, Serper,
    Perplexity, Apify, Stripe, residential proxies, webhooks.
@@ -50,8 +50,8 @@ MachinaOs is three loosely-coupled tiers talking over a single persistent WebSoc
   <Card title="100+ Workflow Nodes" icon="cube">
     AI, agents, social, Android, documents, Google Workspace, code, browser, proxies, utilities
   </Card>
-  <Card title="11 Chat-Model Providers" icon="brain">
-    OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek, Kimi, Mistral, Groq, Cerebras, plus local Ollama and LM Studio
+  <Card title="12 LLM Providers" icon="brain">
+    OpenAI, Anthropic, Gemini, OpenRouter, xAI, DeepSeek, Kimi, Mistral, Groq, Cerebras, plus local Ollama and LM Studio
   </Card>
   <Card title="16 Specialized Agents" icon="robot">
     Android, Coding, Web, Task, Social, Travel, Tool, Productivity, Payments, Consumer, Autonomous, Orchestrator, AI Employee, RLM, Claude Code, Codex
@@ -165,9 +165,9 @@ Under the default Temporal execution path, each deployed trigger runs as a liste
 
 ## AI Agent System
 
-### 11 Chat-Model Providers
+### 12 LLM Providers
 
-Each provider below has its own chat-model node and appears in every agent's provider dropdown. (xAI is reachable on the native chat path through the shared OpenAI-compatible client, but it is not a standalone chat-model node.)
+Each provider below has its own chat-model node and appears in every agent's provider dropdown. (xAI is the exception: it is reachable on the native chat path through the shared OpenAI-compatible client, but it is not a standalone chat-model node.)
 
 | Provider | Native SDK Path | LangChain Path | Notes |
 |---|---|---|---|
@@ -175,6 +175,7 @@ Each provider below has its own chat-model node and appears in every agent's pro
 | Anthropic | Yes | Yes | Claude Fable 5, Opus 4.8/4.7, Sonnet 4.6, Haiku 4.5 (extended thinking via `budget_tokens`) |
 | Gemini | Yes | Yes (fallback) | Gemini 3.5-flash, 3.1-pro/flash-lite, 3-flash, 2.5-pro/flash/flash-lite; native path bypasses a LangChain Windows hang |
 | OpenRouter | Yes | Yes | 200+ models through one API |
+| xAI | Yes (shared OpenAIProvider) | No (native chat only) | Grok models; no standalone chat-model node |
 | DeepSeek | Yes (shared OpenAIProvider) | Yes | deepseek-v4-flash, deepseek-v4-pro (chat/reasoner legacy) |
 | Kimi | Yes (shared OpenAIProvider) | Yes | Moonshot kimi-k2.6, kimi-k2.5, kimi-k2.7-code |
 | Mistral | Yes (shared OpenAIProvider) | Yes | Large / Medium / Small / Codestral (latest) |
@@ -362,7 +363,7 @@ Frontend sends `{"type": "ping"}` every 30 seconds. Reconnection uses PartySocke
 
 ### Cache Fallback Hierarchy
 
-MachinaOs follows the n8n cache pattern with automatic environment-based fallback:
+OpenCompany follows the n8n cache pattern with automatic environment-based fallback:
 
 ```
 Production:  Redis  ->  SQLite (cache_entries)  ->  in-memory dict
@@ -419,12 +420,12 @@ WebSocket connections check the JWT cookie before accepting. Auth context has ex
     Browse all workflow nodes by category
   </Card>
   <Card title="AI Models" icon="brain" href="/nodes/ai-models">
-    11 chat-model providers with native SDK and LangChain paths
+    12 LLM providers with native SDK and LangChain paths
   </Card>
   <Card title="AI Agents" icon="robot" href="/nodes/ai-agent">
     16 specialized agents with teams and delegation
   </Card>
-  <Card title="GitHub" icon="github" href="https://github.com/trohitg/MachinaOS">
+  <Card title="GitHub" icon="github" href="https://github.com/zeenie-ai/opencompany">
     Source code and in-repo `docs-internal/` deep dives
   </Card>
 </CardGroup>

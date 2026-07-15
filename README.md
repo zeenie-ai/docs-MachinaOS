@@ -1,8 +1,8 @@
-# MachinaOs Documentation
+# OpenCompany Documentation
 
-Official documentation for [MachinaOS](https://github.com/zeenie-ai/MachinaOS) - an open-source, plugin-first workflow automation platform with AI agents, a React Flow canvas, and a Temporal-backed execution engine.
+Official documentation for [OpenCompany](https://github.com/zeenie-ai/opencompany) - an open-source, plugin-first workflow automation platform with AI agents, a React Flow canvas, and a Temporal-backed execution engine.
 
-**110+ nodes across 26 categories** | **11 chat-model providers** | **Dracula theme**
+**110+ nodes across 28 categories** | **12 chat-model providers** | **Dracula theme**
 
 ## Live Docs
 
@@ -32,12 +32,12 @@ Navigation is defined in `docs.json`.
 
 ### Node Catalog (`nodes/`)
 
-The live node count is large (~118 node plugins across 26 categories) and grows as plugins are added, so the docs group nodes by category rather than pinning a fixed total.
+The live node count is large (~118 node plugins across 28 categories) and grows as plugins are added, so the docs group nodes by category rather than pinning a fixed total.
 
 | Page | Covers |
 |------|--------|
 | [overview](nodes/overview.mdx) | How the palette is organized; all node categories |
-| [ai-models](nodes/ai-models.mdx) | 11 chat-model providers: OpenAI, Anthropic, Gemini, OpenRouter, Groq, Cerebras, DeepSeek, Kimi, Mistral, Ollama, LM Studio |
+| [ai-models](nodes/ai-models.mdx) | 12 chat-model providers: OpenAI, Anthropic, Gemini, OpenRouter, xAI, Groq, Cerebras, DeepSeek, Kimi, Mistral, Ollama, LM Studio |
 | [ai-agent](nodes/ai-agent.mdx) | AI Agent, Chat Agent (Zeenie), memory, and the 16 specialized agents |
 | [skills](nodes/skills.mdx) | Master Skill + the built-in skill library |
 | [tools](nodes/tools.mdx) | AI tool nodes (calculator, time, search, write-todos, agent builder, dual-purpose tools) |
@@ -55,8 +55,7 @@ Other node families (Telegram, Twitter/X, Social, Email, Stripe, Browser, Scrape
 
 ### Deployment (`deployment/`)
 
-- [production](deployment/production.mdx) - recommended path (`machina deploy up --provider gcp`: cloud CLI + Terraform + single-port `machina serve` under systemd)
-- [docker](deployment/docker.mdx) - legacy / self-host Docker Compose reference
+- [production](deployment/production.mdx) - recommended path (`company deploy up --provider gcp`: cloud CLI + Terraform + single-port `company serve` under systemd)
 
 ### FAQ
 
@@ -65,7 +64,7 @@ Other node families (Telegram, Twitter/X, Social, Email, Stripe, Browser, Scrape
 ## Structure
 
 ```
-docs-MachinaOs/
+docs-OpenCompany/
 ├── docs.json           # Mintlify config + navigation (Dracula theme)
 ├── introduction.mdx
 ├── installation.mdx
@@ -74,8 +73,8 @@ docs-MachinaOs/
 ├── faq.mdx
 ├── tutorials/          # 4 step-by-step guides
 ├── nodes/              # 10 node-category pages
-├── deployment/         # production (machina deploy) + docker (legacy)
-├── .github/workflows/  # Auto-deploy on push to main
+├── deployment/         # production (company deploy)
+├── .github/workflows/  # Validation (deploys via the Mintlify GitHub app)
 └── logo/
 ```
 
@@ -88,7 +87,7 @@ Dracula palette (defined in `docs.json`):
 
 ## Contributing
 
-1. Edit the `.mdx` files - keep facts in sync with the MachinaOs code (models, node names, CLI commands).
+1. Edit the `.mdx` files - keep facts in sync with the OpenCompany code (models, node names, CLI commands).
 2. Preview locally with `mint dev`.
 3. Commit and push to `main` - GitHub Actions auto-deploys the site.
 
