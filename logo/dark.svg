@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 32" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 32" fill="none">
   <rect width="32" height="32" rx="6" fill="#16A34A"/>
   <path d="M8 12h16M8 16h16M8 20h12" stroke="white" stroke-width="2" stroke-linecap="round"/>
   <circle cx="24" cy="20" r="3" fill="white"/>
-  <text x="40" y="22" font-family="system-ui, sans-serif" font-size="16" font-weight="600" fill="#ffffff">MachinaOs</text>
+  <text x="40" y="22" font-family="system-ui, sans-serif" font-size="16" font-weight="600" fill="#ffffff">OpenCompany</text>
 </svg>
