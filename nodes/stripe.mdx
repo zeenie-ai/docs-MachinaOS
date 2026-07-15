@@ -3,4 +3,180 @@ title: "Stripe"
 description: "Run Stripe operations and react to Stripe webhooks from your workflows"
 ---
 
-This page is being written.
+# Stripe
+
+Two nodes built on the official [Stripe CLI](https://stripe.com/docs/stripe-cli): **Stripe** (action) runs any Stripe CLI command — customers, charges, payment intents, refunds, invoices, subscriptions, and more — and **Stripe Receive** (trigger) fires your workflow when a Stripe webhook event arrives. The action node is dual-purpose: wire it to an AI Agent's tools handle and the agent can call it as the `stripe_action` tool.
+
+| Node | Kind | What it does |
+|------|------|--------------|
+| Stripe | Action + AI tool | Run any Stripe CLI command and return parsed JSON |
+| Stripe Receive | Trigger | Fires on incoming Stripe webhook events |
+
+---
+
+## Connect Stripe
+
+Stripe auth is handled entirely by the Stripe CLI — you never paste an API key into OpenCompany.
+
+1. Click the key icon to open **API Credentials** and select **Stripe** under the Payments category.
+2. Click **Login with Stripe**. The Stripe CLI is auto-installed on first use if it is not already on your PATH (downloaded from Stripe's GitHub releases into OpenCompany's data directory).
+3. A new browser tab opens the Stripe Dashboard, and the modal shows a verification code. Confirm the code matches and authorize.
+4. The CLI stores its credentials in its own config file (`~/.config/stripe/config.toml`); OpenCompany never keeps your Stripe keys.
+
+After you authorize, webhook listening starts automatically: OpenCompany supervises a `stripe listen` process that forwards your account's events to the local server, and the webhook signing secret is captured automatically so every forwarded event is signature-verified. The **Disconnect** button stops the listener and runs `stripe logout --all`.
+
+---
+
+## Stripe Action
+
+Pass-through over the Stripe CLI. Type the command exactly as you would after `stripe ` on a terminal — the CLI does its own argument parsing and validation, so every Stripe resource is supported without OpenCompany-specific wrappers.
+
+### Parameters
+
+<ParamField path="command" type="string" required>
+  Stripe CLI command, exactly as you would type after `stripe `. Examples: `customers create --email a@b.com`, `charges list --limit 10`, `trigger charge.succeeded`. Reference: [stripe.com/docs/cli](https://stripe.com/docs/cli)
+</ParamField>
+
+The command string is split with shell-style quoting, so wrap arguments that contain spaces in quotes: `customers create --email a@b.com --name "Acme Inc"`.
+
+| Example command | What it does |
+|-----------------|--------------|
+| `customers create --email a@b.com --name "Acme Inc"` | Create a customer |
+| `customers list --limit 10` | List recent customers |
+| `payment_intents create --amount 2000 --currency usd` | Create a PaymentIntent |
+| `refunds create --payment-intent pi_...` | Refund a PaymentIntent |
+| `charges retrieve ch_...` | Fetch a charge |
+| `trigger charge.succeeded` | Fire a synthetic test event |
+
+### Output
+
+```json
+{
+  "command": "customers create --email rosy@sparrow.com",
+  "success": true,
+  "result": {
+    "id": "cus_ABC123",
+    "object": "customer",
+    "email": "rosy@sparrow.com"
+  },
+  "stdout": "{...}"
+}
+```
+
+`result` holds the CLI's parsed JSON response; `stdout` keeps the raw output.
+
+### Example: Create and charge a customer
+
+```
+Command: payment_intents create --amount 2000 --currency usd --customer cus_ABC123
+```
+
+As an AI tool (`stripe_action`), the LLM fills the same single `command` field — prompt an agent with "create a Stripe test customer with email rosy@sparrow.com" and it emits the CLI call for you.
+
+---
+
+## Stripe Receive
+
+Trigger that fires when the supervised `stripe listen` daemon forwards a webhook event. Events are signature-verified before they reach your workflow.
+
+### Parameters
+
+<ParamField path="event_type_filter" type="string" default="all">
+  Event type to match: `all` for every event, an exact name (`charge.succeeded`), or a wildcard prefix (`charge.*`, `payment_intent.*`). Write the Stripe event name directly — the internal `stripe.` prefix is added automatically.
+</ParamField>
+
+<ParamField path="livemode_filter" type="select" default="all">
+  `all`, `test`, or `live` — filter on the event's livemode flag
+</ParamField>
+
+The node refuses to start waiting if the Stripe listener daemon is not running — connect Stripe in **API Credentials** first.
+
+### Output
+
+```json
+{
+  "event_id": "evt_1PabcDEF",
+  "event_type": "charge.succeeded",
+  "created": 1767225600,
+  "livemode": false,
+  "api_version": "2026-01-01",
+  "request_id": "req_9XyZ",
+  "account": "default",
+  "data": {
+    "object": {
+      "id": "ch_3Pabc",
+      "amount": 2000,
+      "currency": "usd"
+    }
+  }
+}
+```
+
+`data` carries the event's payload — the Stripe object that changed.
+
+### Example: Listen for successful charges
+
+```
+Event Type Filter: charge.succeeded
+Livemode Filter: all
+```
+
+To test without real payments, run `trigger charge.succeeded` through the Stripe Action node — the CLI fires a synthetic event that flows through the same webhook path.
+
+---
+
+## Example: Payment notification
+
+Email yourself whenever a charge succeeds:
+
+```
+[Stripe Receive] --> [AI Agent] --> [Email Send]
+```
+
+1. **Stripe Receive**
+   - Event Type Filter: `charge.succeeded`
+
+2. **AI Agent**
+   - Prompt: "Write a one-line summary of this Stripe charge: amount, currency, and customer if present."
+
+3. **Email Send**
+   - To: your own address
+   - Subject: `Payment received`
+   - Body: the agent's summary
+
+Deploy the workflow so the trigger stays armed for every incoming event.
+
+<Warning>
+Logging in through the Stripe CLI grants keys for both live mode and the test sandbox (valid 90 days). Commands you run through Stripe Action can affect real customers and real money in live mode, and Stripe Receive sees events from both modes by default — use the livemode filter to separate them.
+</Warning>
+
+---
+
+## Tips
+
+<Tip>
+All Stripe CLI commands are supported automatically — new Stripe resources work without any OpenCompany update.
+</Tip>
+
+<Tip>
+Combine Stripe Action with the payments skill on an AI agent for multi-step flows like "refund the most recent payment from rosy@sparrow.com".
+</Tip>
+
+---
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Webhooks" icon="webhook" href="/nodes/webhooks">
+    Generic HTTP triggers and responses
+  </Card>
+  <Card title="AI Agents" icon="robot" href="/nodes/ai-agent">
+    Use Stripe Action as an AI tool
+  </Card>
+  <Card title="Email" icon="envelope" href="/nodes/email">
+    Send payment notifications by mail
+  </Card>
+  <Card title="Schedulers & Triggers" icon="clock" href="/nodes/schedulers">
+    Scheduled reconciliation workflows
+  </Card>
+</CardGroup>

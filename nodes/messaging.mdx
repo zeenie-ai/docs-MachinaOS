@@ -3,4 +3,497 @@ title: "Messaging & Social"
 description: "Telegram, Twitter/X, and unified social nodes for sending, receiving, and searching messages"
 ---
 
-This page is being written.
+OpenCompany ships eight messaging and social nodes across three families: platform-specific Telegram nodes (bot API), platform-specific Twitter/X nodes (OAuth), and platform-agnostic Social nodes that normalize messages across channels.
+
+| Node | Kind | Auth | Purpose |
+|------|------|------|---------|
+| Telegram Send | Action | Telegram bot token | Send text, photo, document, location, or contact messages |
+| Telegram Receive | Trigger | Telegram bot token | Fire the workflow on an incoming Telegram message |
+| Twitter Send | Action + AI tool | Twitter/X OAuth | Tweet, reply, quote, retweet, like, unlike, delete |
+| Twitter Search | Action + AI tool | Twitter/X OAuth | Search recent tweets with enriched results |
+| Twitter User | Action + AI tool | Twitter/X OAuth | Look up users, followers, and following |
+| Twitter Receive | Trigger | Twitter/X OAuth | Poll for mentions, search matches, or timeline updates |
+| Social Send | Action + AI tool | Platform-dependent | Platform-agnostic outbound messaging (WhatsApp today) |
+| Social Receive | Action | None | Normalize any messaging trigger into one unified schema |
+
+The Telegram and Social nodes live in the **Social** section of the component palette; switch the toolbar Mode toggle from **Normal** to **Dev** to see it.
+
+---
+
+## Telegram
+
+Telegram is the fastest messaging integration to set up: a bot token is free and takes about two minutes.
+
+1. In Telegram, message **@BotFather** and send `/newbot` to create a bot. BotFather replies with an HTTP API token.
+2. In OpenCompany, click the key icon in the toolbar to open **API Credentials**, select **Telegram Bot**, paste the token into **Bot Token**, and click **Validate**. The field shows **Valid** and the provider gets a green **Connected** badge.
+
+The **Telegram Bot** panel also has an optional **Your Chat ID (optional)** field. Fill it in to make Telegram Send's `self` recipient route to your account immediately (DM **@userinfobot** to find your id) — or leave it blank and OpenCompany auto-captures it from the first private DM you send the bot.
+
+### Telegram Send
+
+Sends a message through your connected bot. Supports text, photos, documents, locations, and contacts.
+
+#### Parameters
+
+<ParamField path="recipient_type" type="select" default="self">
+  Who receives the message: `self` (the captured bot owner), `user`, or `group`
+</ParamField>
+
+<ParamField path="chat_id" type="string">
+  Numeric chat id or `@username`. Required when Recipient Type is `user` or `group`.
+</ParamField>
+
+<ParamField path="message_type" type="select" default="text">
+  Message kind: `text`, `photo`, `document`, `location`, or `contact`
+</ParamField>
+
+<ParamField path="text" type="string">
+  Message text. Required when Message Type is `text`.
+</ParamField>
+
+<ParamField path="media_url" type="string">
+  Remote URL or Telegram `file_id`. Required for `photo` and `document` messages.
+</ParamField>
+
+<ParamField path="caption" type="string">
+  Optional caption for `photo` and `document` messages
+</ParamField>
+
+For `location` messages, `latitude` and `longitude` (numbers) are required. For `contact` messages, `phone_number` and `first_name` are required and `last_name` is optional.
+
+<ParamField path="parse_mode" type="select" default="Auto">
+  Text formatting: `Auto` (GFM markdown converted to Telegram HTML), None, `HTML`, `Markdown`, or `MarkdownV2`. Applies to `text`, `photo`, and `document` messages.
+</ParamField>
+
+<ParamField path="silent" type="boolean" default="false">
+  Send without a notification sound
+</ParamField>
+
+<ParamField path="reply_to_message_id" type="number" default="0">
+  When set to a non-zero message id, sends the message as a reply to it
+</ParamField>
+
+#### Output
+
+```json
+{
+  "message_id": 42,
+  "chat_id": 123456789,
+  "message_type": "text",
+  "date": "2026-07-15T10:30:00+00:00"
+}
+```
+
+<Tip>
+Leave **Parse Mode** on `Auto`: agent replies written in markdown are converted to Telegram HTML automatically, and if Telegram rejects the formatting the node retries as plain text.
+</Tip>
+
+### Telegram Receive
+
+Trigger node — waits for an incoming Telegram message that passes its filters, then starts the workflow with the message as output.
+
+#### Parameters
+
+<ParamField path="content_type_filter" type="select" default="all">
+  Accept only one content type: `all`, `text`, `photo`, `video`, `audio`, `voice`, `document`, `sticker`, `location`, `contact`, or `poll`
+</ParamField>
+
+<ParamField path="sender_filter" type="select" default="all">
+  Who can trigger the workflow: `all`, `self` (the bot owner), `private`, `group`, `supergroup`, `channel`, `specific_chat`, `specific_user`, or `keywords`
+</ParamField>
+
+<ParamField path="chat_id" type="string">
+  Numeric chat id or `@username`. Required when Sender Filter is `specific_chat`.
+</ParamField>
+
+<ParamField path="from_user" type="string">
+  Numeric user id. Required when Sender Filter is `specific_user`.
+</ParamField>
+
+<ParamField path="keywords" type="string">
+  Comma-separated keywords, matched case-insensitively as substrings. Required when Sender Filter is `keywords`.
+</ParamField>
+
+<ParamField path="ignore_bots" type="boolean" default="true">
+  Skip messages sent by other bots (not applied when Sender Filter is `self`)
+</ParamField>
+
+#### Output
+
+```json
+{
+  "message_id": 42,
+  "chat_id": 123456789,
+  "chat_type": "private",
+  "from_id": 123456789,
+  "from_username": "yourname",
+  "from_first_name": "Ada",
+  "is_bot": false,
+  "text": "Hello bot",
+  "content_type": "text",
+  "date": "2026-07-15T10:30:00+00:00",
+  "reply_to_message_id": null
+}
+```
+
+Media messages add a matching block: `photo` (`file_id`, `width`, `height`, `file_size`), `document` (`file_id`, `file_name`, `mime_type`, `file_size`), `location` (`latitude`, `longitude`), or `contact` (`phone_number`, `first_name`, `last_name`, `user_id`). For captioned media, `text` carries the caption.
+
+<Warning>
+Keyword matching is a case-insensitive substring check with no word boundaries — `hi` matches `chicken`. The `self` filter only matches once your chat id is known (explicit field or first DM).
+</Warning>
+
+---
+
+## Twitter/X
+
+The four Twitter/X nodes authenticate with OAuth 2.0 against your own X Developer app:
+
+1. Create an app in the X Developer Portal with OAuth 2.0 enabled and set its callback URL to `http://localhost:3010/api/twitter/callback`.
+2. In **API Credentials**, select **Twitter/X** and enter the **Client ID** (and optionally the **Client Secret** — optional for PKCE).
+3. Click **Save Credentials**, then **Login with Twitter/X** and approve the requested scopes in the browser.
+
+The requested scopes are `tweet.read`, `tweet.write`, `users.read`, `follows.read`, `follows.write`, `like.read`, `like.write`, and `offline.access` (for silent token refresh). Use **Disconnect** in the same panel to revoke the stored tokens.
+
+The three action nodes are dual-purpose: wire them to an AI Agent's tools handle and the agent can call `twitter_send`, `twitter_search`, and `twitter_user` on its own. Twitter Receive is a trigger only.
+
+### Twitter Send
+
+Performs write actions against your authenticated account.
+
+#### Parameters
+
+<ParamField path="action" type="select" default="tweet" required>
+  One of `tweet`, `reply`, `retweet`, `quote`, `like`, `unlike`, or `delete`
+</ParamField>
+
+<ParamField path="text" type="string">
+  Tweet content. Required for `tweet`, `reply`, and `quote`. Silently truncated to 280 characters.
+</ParamField>
+
+<ParamField path="tweet_id" type="string">
+  Target tweet ID. Required for `reply`, `retweet`, `quote`, `like`, `unlike`, and `delete`.
+</ParamField>
+
+The form also accepts `include_media`, `media_urls` (comma-separated, max 4 images or 1 video), `include_poll`, `poll_options` (comma-separated 2-4 options, 25 characters each), and `poll_duration` (minutes, 5-10080, default 1440) — see the warning below.
+
+#### Output
+
+```json
+{
+  "action": "tweet_sent",
+  "data": {
+    "id": "1811234567890123456",
+    "text": "Hello from OpenCompany"
+  }
+}
+```
+
+The `action` field reports what happened: `tweet_sent`, `reply_sent`, `quoted`, `retweeted`, `liked`, `unliked`, or `deleted`.
+
+<Warning>
+Media and poll parameters are accepted by the form but ignored by the current implementation — the node always sends a text-only tweet. Text longer than 280 characters is cut without warning.
+</Warning>
+
+### Twitter Search
+
+Searches recent tweets and returns enriched results: expanded URLs, joined author profiles, attached media, referenced tweets, and full long-form text when a tweet exceeds 280 characters.
+
+#### Parameters
+
+<ParamField path="query" type="string" required>
+  X search query. Supports the full operator set (`from:`, `lang:`, `-is:retweet`, ...).
+</ParamField>
+
+<ParamField path="max_results" type="number" default="10">
+  Number of results, clamped to 10-100 (the API minimum is 10)
+</ParamField>
+
+The form also shows `sort_order` (default `recency`), `start_time` / `end_time` (ISO 8601), and `include_metrics` / `include_author` toggles, but the current implementation does not forward them — the full field set is always requested.
+
+#### Output
+
+```json
+{
+  "tweets": [
+    {
+      "id": "1811234567890123456",
+      "text": "Full tweet text...",
+      "display_text": "Tweet text with t.co links expanded...",
+      "author_id": "12345",
+      "created_at": "2026-07-15T10:30:00+00:00",
+      "public_metrics": {
+        "retweet_count": 3,
+        "like_count": 12
+      },
+      "author": {
+        "id": "12345",
+        "username": "someuser",
+        "name": "Some User"
+      }
+    }
+  ],
+  "count": 1,
+  "query": "opencompany -is:retweet"
+}
+```
+
+Tweets may also carry optional `urls`, `media`, and `referenced_tweets` arrays when the API returns them. Only the first result page is returned — pagination is not surfaced.
+
+### Twitter User
+
+Looks up users and their social graph.
+
+#### Parameters
+
+<ParamField path="operation" type="select" default="me" required>
+  One of `me`, `by_username`, `by_id`, `followers`, or `following`
+</ParamField>
+
+<ParamField path="username" type="string">
+  Handle without the `@`. Required for `by_username`.
+</ParamField>
+
+<ParamField path="user_id" type="string">
+  Numeric user id. Required for `by_id`; optional for `followers` and `following` (defaults to the authenticated user).
+</ParamField>
+
+<ParamField path="max_results" type="number" default="100">
+  Result count for `followers` and `following`, clamped to 1-1000
+</ParamField>
+
+#### Output
+
+For `me`, `by_username`, and `by_id`:
+
+```json
+{
+  "operation": "by_username",
+  "user": {
+    "id": "12345",
+    "username": "someuser",
+    "name": "Some User",
+    "profile_image_url": "https://...",
+    "verified": false,
+    "description": "Bio text"
+  }
+}
+```
+
+For `followers` and `following`, the output is `{ "operation": "...", "users": [...], "count": 42 }` where each entry has the same user shape. Only the first page is returned.
+
+### Twitter Receive
+
+Trigger node — polls the X API (no push webhooks on the free tier) and fires the workflow when a matching event arrives.
+
+#### Parameters
+
+<ParamField path="trigger_type" type="select" default="mentions" required>
+  What to watch: `mentions`, `search`, or `timeline`
+</ParamField>
+
+<ParamField path="search_query" type="string">
+  Required when Trigger Type is `search`. Matched case-insensitively as a substring against the event's query.
+</ParamField>
+
+<ParamField path="user_id" type="string">
+  For `timeline`: watch a specific user's timeline. Empty means the authenticated user.
+</ParamField>
+
+<ParamField path="filter_retweets" type="boolean" default="true">
+  Form-level hint; not enforced by the event filter in the current implementation
+</ParamField>
+
+<ParamField path="filter_replies" type="boolean" default="false">
+  Form-level hint; not enforced by the event filter in the current implementation
+</ParamField>
+
+<ParamField path="poll_interval" type="number" default="60">
+  Seconds between polls (15-3600). Applied when the workflow is deployed.
+</ParamField>
+
+#### Output
+
+```json
+{
+  "trigger_type": "mentions",
+  "tweet_id": "1811234567890123456",
+  "text": "@yourbot great work!",
+  "author_id": "12345",
+  "author_username": "someuser",
+  "created_at": "2026-07-15T10:30:00+00:00"
+}
+```
+
+Search events add a `query` field; timeline events add `user_id`.
+
+<Warning>
+Expect up to `poll_interval` seconds of latency between a tweet being posted and the trigger firing — the default is 60 seconds.
+</Warning>
+
+---
+
+## Unified Social nodes
+
+The Social nodes decouple your workflow from any single platform. **Social Receive** sits after a platform trigger (WhatsApp Receive, Telegram Receive, Chat Trigger) and normalizes whatever arrives into one schema; **Social Send** takes one payload shape and routes it to the platform selected by its `channel` parameter. Build the middle of your workflow once against the unified schema, and swap the endpoints per platform.
+
+### Social Send
+
+Platform-agnostic outbound messaging. The node advertises ten channels (`whatsapp`, `telegram`, `discord`, `slack`, `signal`, `sms`, `webchat`, `email`, `matrix`, `teams`), but only `whatsapp` is implemented today — other values return a "not yet implemented" error. Use **Telegram Send** for Telegram in the meantime.
+
+It exposes four input handles — message, media, contact, and metadata — matching the four output handles on Social Receive, and can also be wired to an AI Agent as a tool.
+
+#### Key parameters
+
+<ParamField path="channel" type="select" default="whatsapp">
+  Target platform. Only `whatsapp` is wired today.
+</ParamField>
+
+<ParamField path="recipient_type" type="select" default="phone">
+  How the recipient is addressed: `phone`, `group`, `channel`, `user`, or `chat`. Each choice reveals its matching id field (`phone`, `group_id`, `channel_id`, `user_id`, `chat_id`).
+</ParamField>
+
+<ParamField path="message_type" type="select" default="text">
+  `text`, `image`, `video`, `audio`, `document`, `sticker`, `location`, `contact`, `poll`, `buttons`, or `list`
+</ParamField>
+
+<ParamField path="message" type="string">
+  Message body for `text` messages
+</ParamField>
+
+Text messages take a `format` (`plain`, `markdown`, or `html`, default `plain`) and a `disable_preview` toggle. Media messages pick a `media_source` — `url` (`media_url`), `base64` (`media_data`), or `file` (`file_path`). Additional parameter groups appear per message type: `caption` / `filename` / `mime_type` for media, `latitude` / `longitude` / `location_name` / `address` for locations, `contact_name` / `contact_phone` / `vcard` for contacts, `poll_question` / `poll_options` / `poll_allow_multiple` for polls, and `buttons` / `list_sections` (JSON) for interactive messages. Delivery flags: `reply_to_message` (+ `reply_message_id`, `reply_to_current`), `audio_as_voice`, `silent`, and `protect_content`.
+
+#### Output
+
+```json
+{
+  "success": true,
+  "message_id": "3EB0A1B2C3D4",
+  "channel": "whatsapp",
+  "recipient": "15551234567",
+  "recipient_type": "phone",
+  "message_type": "text",
+  "timestamp": "2026-07-15T10:30:00+00:00"
+}
+```
+
+### Social Receive
+
+Normalizes messages from any connected platform trigger into a unified inbound schema, applies filters, and fans the result out across four output handles so downstream nodes grab just the slice they need.
+
+Connect a platform trigger (WhatsApp Receive, Telegram Receive, Chat Trigger) to Social Receive; it detects the source platform from the upstream node and normalizes automatically.
+
+#### Parameters
+
+<ParamField path="channel_filter" type="select" default="all">
+  Accept only one platform: `all`, `whatsapp`, `telegram`, `discord`, `slack`, `signal`, `sms`, `webchat`, `email`, `matrix`, or `teams`
+</ParamField>
+
+<ParamField path="message_type_filter" type="select" default="all">
+  `all`, `text`, `image`, `video`, `audio`, `document`, `sticker`, `location`, `contact`, `poll`, or `reaction`
+</ParamField>
+
+<ParamField path="sender_filter" type="select" default="all">
+  `all`, `any_contact` (no group messages), `contact` (specific phone), `group` (specific chat), or `keywords`
+</ParamField>
+
+<ParamField path="contact_phone" type="string">
+  Exact phone match. Required when Sender Filter is `contact`.
+</ParamField>
+
+<ParamField path="group_id" type="string">
+  Exact chat id match. Required when Sender Filter is `group`.
+</ParamField>
+
+<ParamField path="keywords" type="string">
+  Comma-separated keywords, matched case-insensitively as substrings
+</ParamField>
+
+<ParamField path="ignore_own_messages" type="boolean" default="true">
+  Drop messages you sent yourself
+</ParamField>
+
+<ParamField path="ignore_bots" type="boolean" default="false">
+  Drop messages sent by bots
+</ParamField>
+
+<ParamField path="include_media_data" type="boolean" default="false">
+  Include the base64 media payload in the output (memory-intensive)
+</ParamField>
+
+#### Outputs
+
+Social Receive is the one node in this family with four dedicated output handles:
+
+| Handle | Shape | Contents |
+|--------|-------|----------|
+| Message | string | Plain message text, ready for an LLM prompt |
+| Media | object | `url`, `type`, `mimetype`, `caption`, `size`, `thumbnail`, `filename` (empty when no media) |
+| Contact | object | `sender`, `sender_phone`, `sender_name`, `sender_username`, `channel`, `is_group`, `group_info`, `chat_title` |
+| Metadata | object | `message_id`, `chat_id`, `timestamp`, `message_type`, `is_from_me`, `is_forwarded`, `reply_to`, `thread_id` |
+
+The main output carries the full unified message: `message_id`, `channel`, `sender`, `sender_phone`, `sender_name`, `chat_id`, `chat_type`, `message_type`, `text`, `timestamp`, `is_group`, `is_from_me`, `is_forwarded`, `is_bot`, plus the original platform payload under `raw`.
+
+<Warning>
+When a message fails the filters, the node still succeeds but emits `result: null` with `filtered: true` — downstream nodes must tolerate a null payload. `ignore_own_messages` defaults to true, so echo-style self-tests are silently dropped unless you turn it off.
+</Warning>
+
+---
+
+## Example: cross-post an update
+
+Send the same text to Telegram, Twitter/X, and WhatsApp from one trigger:
+
+```
+                 +--> [Telegram Send]
+[Chat Trigger] --+--> [Twitter Send]
+                 +--> [Social Send]
+```
+
+1. **Telegram Send**
+   - Recipient Type: `self`
+   - Message Type: `text`
+   - Text: `{{chattrigger.message}}`
+
+2. **Twitter Send**
+   - Action: `tweet`
+   - Text: `{{chattrigger.message}}` (truncated to 280 characters)
+
+3. **Social Send**
+   - Channel: `whatsapp`
+   - Recipient Type: `phone`
+   - Phone: your number, digits only
+   - Message Type: `text`
+   - Message: `{{chattrigger.message}}`
+
+Click **Start** to deploy, then type your update into the Chat panel — all three sends fire from the single incoming message.
+
+---
+
+## Tips
+
+<Tip>
+Telegram is the best starting platform: the bot token is free, validation is instant, and no developer account approval is needed. Follow the [Telegram bot tutorial](/tutorials/telegram-bot) for an end-to-end build.
+</Tip>
+
+<Tip>
+Wire **Twitter Search** and **Twitter User** to an AI Agent's tools handle to let the agent research accounts and topics on its own before posting with **Twitter Send**.
+</Tip>
+
+<Tip>
+Put **Social Receive** between your platform triggers and the rest of the workflow — downstream nodes then read one schema regardless of where the message came from.
+</Tip>
+
+<Warning>
+Receive triggers wait indefinitely once started. Click **Stop** (the **Start** button while running) to cancel a deployed workflow.
+</Warning>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="WhatsApp" icon="message" href="/nodes/whatsapp">
+    Full WhatsApp integration: QR pairing, groups, channels, and media
+  </Card>
+  <Card title="Telegram Bot Tutorial" icon="paper-plane" href="/tutorials/telegram-bot">
+    Build a free AI-powered Telegram bot in 10 minutes
+  </Card>
+</CardGroup>

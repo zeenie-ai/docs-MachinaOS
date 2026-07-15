@@ -3,4 +3,547 @@ title: "Google Workspace"
 description: "Gmail, Calendar, Drive, Sheets, Tasks, and Contacts nodes with one Google sign-in"
 ---
 
-This page is being written.
+# Google Workspace
+
+OpenCompany ships seven Google Workspace nodes that share a single Google sign-in: connect once and every node below authenticates through the same stored OAuth tokens. Six of them are dual-purpose — drop them on the canvas as workflow steps, or wire them to an AI Agent's tools handle and the agent can call them directly (tool names `google_gmail`, `google_calendar`, `google_drive`, `google_sheets`, `google_tasks`, `google_contacts`).
+
+| Node | Kind | What it does |
+|------|------|--------------|
+| Gmail | Action + AI tool | Send, search, and read email |
+| Gmail Receive | Trigger (polling) | Fires when a new email matching a filter arrives |
+| Calendar | Action + AI tool | Create, list, update, and delete calendar events |
+| Drive | Action + AI tool | Upload, download, list, and share files |
+| Sheets | Action + AI tool | Read, write, and append spreadsheet values |
+| Tasks | Action + AI tool | Manage personal to-do items |
+| Contacts | Action + AI tool | Create, search, and manage contacts |
+
+---
+
+## Connect your Google account
+
+OpenCompany does not ship a shared Google app. You create your own OAuth client in Google Cloud Console (free), then paste its Client ID and Client Secret into OpenCompany. You only do this once.
+
+<Warning>
+Plan for roughly 15-20 minutes the first time through. Because your OAuth client is brand new, Google shows an "unverified app" warning screen during sign-in — this is expected for a personal client and safe to proceed through, since the app is your own. Adding your own Google account as a test user (step 3) is what lets you continue past it.
+</Warning>
+
+<Steps>
+  <Step title="Create a Google Cloud project">
+    Go to [console.cloud.google.com](https://console.cloud.google.com) and create a new project (any name works).
+  </Step>
+  <Step title="Enable six APIs">
+    In **APIs & Services → Library**, enable each of: **Gmail API**, **Google Calendar API**, **Google Drive API**, **Google Sheets API**, **Google Tasks API**, and **People API** (the People API backs the Contacts node).
+  </Step>
+  <Step title="Configure the OAuth consent screen">
+    In **APIs & Services → OAuth consent screen**, choose the **External** user type, fill in the required app fields, and add your own Google account as a **Test User**. Test-user status is what lets you sign in to an unverified app.
+  </Step>
+  <Step title="Create an OAuth client ID">
+    In **APIs & Services → Credentials**, create an **OAuth client ID** of type **Web application**. Add this authorized redirect URI, exactly as written:
+
+    ```
+    http://localhost:3010/api/google/callback
+    ```
+
+    Copy the generated Client ID and Client Secret.
+  </Step>
+  <Step title="Connect OpenCompany">
+    In OpenCompany, click the key icon to open **API Credentials**, select **Google Workspace**, paste the Client ID and Client Secret, then click **Save Credentials**. Click **Login with Google Workspace** and approve the request in your browser (clicking through the unverified-app screen).
+  </Step>
+</Steps>
+
+One sign-in covers all seven nodes: OpenCompany requests the combined scopes for Gmail, Calendar, Drive, Sheets, Tasks, and Contacts in a single consent, with offline access so tokens refresh automatically in the background.
+
+---
+
+## Gmail
+
+Send, search, and read Gmail messages. One node, three operations selected by the **Operation** parameter. As an AI tool it is exposed as `google_gmail`.
+
+### Parameters
+
+<ParamField path="operation" type="select" default="send">
+  Operation to perform: send, search, or read
+</ParamField>
+
+**Send**
+
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `to` | string | | yes | Recipient email(s), comma-separated |
+| `cc` | string | | no | CC recipients |
+| `bcc` | string | | no | BCC recipients |
+| `subject` | string | | yes | Email subject |
+| `body` | string | | yes | Email body content |
+| `body_type` | select | `text` | no | `text` or `html` |
+
+**Search**
+
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `query` | string | | yes | Gmail search query — same syntax as the Gmail web UI (`from:`, `subject:`, `is:unread`, ...) |
+| `max_results` | number | `10` | no | Maximum messages (capped at 100) |
+| `include_body` | boolean | `false` | no | Fetch the full body per result (one extra API call per message) |
+
+**Read**
+
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `message_id` | string | | yes | Gmail message ID (e.g. from a search result) |
+| `format` | select | `full` | no | `full`, `minimal`, `raw`, or `metadata` |
+
+### Output
+
+```json
+{
+  "operation": "send",
+  "message_id": "18c1a2b3d4e5f6a7",
+  "thread_id": "18c1a2b3d4e5f6a7",
+  "to": "team@example.com",
+  "subject": "Build finished"
+}
+```
+
+Search returns `{operation, messages: [...], count, query, result_size_estimate}`; read returns `{operation}` plus the formatted message fields.
+
+### Example: Search unread billing mail
+
+```
+Operation: search
+Query: is:unread from:billing@stripe.com
+Max Results: 10
+Include Body: true
+```
+
+---
+
+## Gmail Receive
+
+Polling trigger that fires when a new Gmail message matching your filter arrives. Gmail has no simple push channel, so this node polls at a configurable interval, diffs message IDs against a baseline, and emits the first new message it finds.
+
+### Parameters
+
+<ParamField path="filter_query" type="string" default="is:unread">
+  Gmail search query (same syntax as the Gmail web UI)
+</ParamField>
+
+<ParamField path="label_filter" type="string" default="INBOX">
+  Label name to watch, or `all` to disable label filtering. When set, it is prepended to the query as `label:<name>`.
+</ParamField>
+
+<ParamField path="mark_as_read" type="boolean" default="false">
+  Remove the UNREAD label from the matched message after fetching it
+</ParamField>
+
+<ParamField path="poll_interval" type="number" default="60">
+  Seconds between polls (clamped to 10-3600)
+</ParamField>
+
+<ParamField path="account_mode" type="select" default="owner">
+  Which OAuth token store to use: `owner` or `customer` (`customer_id` is required in customer mode)
+</ParamField>
+
+### Output
+
+```json
+{
+  "message_id": "18c1a2b3d4e5f6a7",
+  "thread_id": "18c1a2b3d4e5f6a7",
+  "from": "billing@stripe.com",
+  "to": "you@example.com",
+  "subject": "Your invoice is ready",
+  "date": "Tue, 14 Jul 2026 08:12:00 +0000",
+  "snippet": "Your July invoice...",
+  "body": "Full message body...",
+  "labels": ["INBOX", "UNREAD"],
+  "size_estimate": 4523
+}
+```
+
+An `attachments` array (`filename`, `mime_type`, `size`, `attachment_id` per entry) is included when the message has attachments.
+
+### Example: Watch for invoices
+
+```
+Filter Query: from:billing@stripe.com has:attachment
+Label Filter: INBOX
+Mark As Read: true
+Poll Interval: 120
+```
+
+<Warning>
+The baseline of already-seen messages is kept in memory. Emails that arrive while the server is offline are treated as pre-existing and will not fire the trigger, and only the first new message per poll cycle is emitted.
+</Warning>
+
+---
+
+## Calendar
+
+Create, list, update, and delete Google Calendar events. As an AI tool it is exposed as `google_calendar`.
+
+### Parameters
+
+<ParamField path="operation" type="select" default="create">
+  Operation to perform: create, list, update, or delete
+</ParamField>
+
+<ParamField path="calendar_id" type="string" default="primary">
+  Target calendar (all operations)
+</ParamField>
+
+**Create**
+
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `title` | string | | yes | Event summary |
+| `start_time` | string | | yes | ISO 8601 datetime |
+| `end_time` | string | | yes | ISO 8601 datetime |
+| `description` | string | | no | Event description |
+| `location` | string | | no | Location text |
+| `attendees` | string | | no | Comma-separated attendee emails |
+| `reminder_minutes` | number | `30` | no | Popup reminder lead time |
+| `timezone` | string | `UTC` | no | Event timezone |
+
+**List**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `start_date` | string | today | `today` or an ISO datetime |
+| `end_date` | string | +7 days | ISO datetime or `today+Nd` shortcut (e.g. `today+7d`) |
+| `max_results` | number | `10` | Maximum events (capped at 250) |
+| `single_events` | boolean | `true` | Expand recurring events into instances |
+| `order_by` | select | `startTime` | `startTime` or `updated` |
+
+**Update** takes `event_id` (required) plus any of `title`, `start_time`, `end_time`, `description`, `location` as patch fields. **Delete** takes `event_id` (required) and `send_updates` (`all` or `none` — whether attendees get cancellation emails).
+
+### Output
+
+```json
+{
+  "events": [
+    {
+      "event_id": "7ac3k9d1",
+      "title": "Team standup",
+      "start": "2026-07-15T09:00:00Z",
+      "end": "2026-07-15T09:30:00Z",
+      "status": "confirmed",
+      "html_link": "https://www.google.com/calendar/event?eid=..."
+    }
+  ],
+  "count": 1,
+  "time_range": {"start": "2026-07-15T00:00:00Z", "end": "2026-07-22T00:00:00Z"}
+}
+```
+
+Create and update return `{event_id, title, start, end, html_link, status}`; delete returns `{deleted: true, event_id}`.
+
+### Example: Today's agenda
+
+```
+Operation: list
+Start Date: today
+End Date: today+1d
+Order By: startTime
+```
+
+---
+
+## Drive
+
+Upload, download, list, and share Google Drive files. Uploads accept either a source URL (fetched fully into memory and re-uploaded — avoid very large files) or base64-inlined content. As an AI tool it is exposed as `google_drive`.
+
+### Parameters
+
+<ParamField path="operation" type="select" default="upload">
+  Operation to perform: upload, download, list, or share
+</ParamField>
+
+**Upload**
+
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `filename` | string | | yes | Target filename in Drive |
+| `file_url` | string | | one of | Source URL to fetch (this or `file_content`) |
+| `file_content` | string | | one of | Base64-encoded file bytes |
+| `folder_id` | string | | no | Parent folder ID; empty uploads to the root |
+| `mime_type` | string | `application/octet-stream` | no | When uploading from a URL and left at the default, the response's Content-Type is adopted |
+| `description` | string | | no | File description |
+
+**Download**
+
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `file_id` | string | | yes | Drive file ID |
+| `output_format` | select | `base64` | no | `base64` returns bytes inline; `url` returns metadata plus a download link (still requires authentication) |
+
+**List**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `folder_id` | string | | Restrict to a parent folder |
+| `query` | string | | Drive query DSL (e.g. `name contains 'report'`) |
+| `max_results` | number | `20` | Maximum files (capped at 1000) |
+| `file_types` | select | `all` | `all`, `folder`, `document`, `spreadsheet`, or `image` |
+| `order_by` | string | `modifiedTime desc` | Sort order |
+
+**Share** takes `file_id` (required), `email` (required), `role` (`reader` / `writer` / `commenter`, default `reader`), `send_notification` (default `true`), and an optional `message`.
+
+### Output
+
+```json
+{
+  "file_id": "1aB2cD3eF4",
+  "name": "report.pdf",
+  "mime_type": "application/pdf",
+  "size": "1024000",
+  "web_link": "https://drive.google.com/file/d/1aB2cD3eF4/view",
+  "download_link": "https://drive.google.com/uc?id=1aB2cD3eF4"
+}
+```
+
+Download returns `{file_id, name, mime_type, size, content_base64}` (or `download_url` + `web_link` in `url` mode); list returns `{files: [...], count, next_page_token}`; share returns `{permission_id, file_id, file_name, shared_with, role, web_link}`.
+
+### Example: Share a report
+
+```
+Operation: share
+File ID: 1aB2cD3eF4
+Email: teammate@example.com
+Role: reader
+Send Notification: true
+```
+
+---
+
+## Sheets
+
+Read, write, and append cell values in Google Sheets. As an AI tool it is exposed as `google_sheets`.
+
+### Parameters
+
+<ParamField path="operation" type="select" default="read">
+  Operation to perform: read, write, or append
+</ParamField>
+
+<ParamField path="spreadsheet_id" type="string" required>
+  Spreadsheet ID (the long token in the sheet's URL)
+</ParamField>
+
+<ParamField path="range" type="string" default="A1:Z1000" required>
+  A1 notation, e.g. `Sheet1!A1:D10`. For write, a start cell like `Sheet1!A1` is enough — the range expands to fit the values.
+</ParamField>
+
+**Read**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `value_render_option` | select | `FORMATTED_VALUE` | `FORMATTED_VALUE` (user-visible strings), `UNFORMATTED_VALUE` (native types), or `FORMULA` |
+| `major_dimension` | select | `ROWS` | `ROWS` or `COLUMNS` |
+
+**Write / Append**
+
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `values` | array | | yes | 2D array of cell values, or a JSON string that parses to one; a 1D array is auto-wrapped into a single row |
+| `value_input_option` | select | `USER_ENTERED` | no | `USER_ENTERED` interprets input like typing in the UI (formulas evaluate); `RAW` stores literal text |
+| `insert_data_option` | select | `INSERT_ROWS` | no | Append only: `INSERT_ROWS` or `OVERWRITE` |
+
+### Output
+
+```json
+{
+  "values": [["Name", "Amount"], ["Acme Inc", "2500"]],
+  "range": "Sheet1!A1:B2",
+  "rows": 2,
+  "columns": 2,
+  "major_dimension": "ROWS"
+}
+```
+
+Write and append return `{updated_range, updated_rows, updated_columns, updated_cells}`.
+
+### Example: Append a log row
+
+```
+Operation: append
+Spreadsheet ID: 1x2y3z...
+Range: Log!A:C
+Values: [["2026-07-15", "deploy", "ok"]]
+Insert Data Option: INSERT_ROWS
+```
+
+---
+
+## Tasks
+
+Manage personal to-do items in Google Tasks. As an AI tool it is exposed as `google_tasks`.
+
+### Parameters
+
+<ParamField path="operation" type="select" default="create">
+  Operation to perform: create, list, complete, update, or delete
+</ParamField>
+
+<ParamField path="tasklist_id" type="string" default="@default">
+  Which tasklist to use (all operations)
+</ParamField>
+
+**Create**
+
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `title` | string | | yes | Task title |
+| `notes` | string | | no | Task description |
+| `due_date` | string | | no | RFC 3339 datetime; a date-only value like `2026-07-20` is upgraded to `T00:00:00.000Z` |
+
+**List**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `show_completed` | boolean | `false` | Include completed tasks |
+| `show_hidden` | boolean | `false` | Include hidden tasks |
+| `max_results` | number | `100` | Maximum tasks to return |
+
+**Complete** and **delete** take `task_id` (required). **Update** takes `task_id` (required) plus any of `title`, `notes`, `due_date`, `status` as patch fields — only non-empty fields are applied.
+
+### Output
+
+```json
+{
+  "tasks": [
+    {
+      "task_id": "MTIzNDU2",
+      "title": "Send weekly report",
+      "due": "2026-07-18T00:00:00.000Z",
+      "status": "needsAction"
+    }
+  ],
+  "count": 1
+}
+```
+
+Create, complete, and update return `{task_id, title, due, status, ...}`; delete returns `{deleted: true, task_id}`.
+
+### Example: Create a task with a due date
+
+```
+Operation: create
+Title: Prepare quarterly review
+Notes: Slides + numbers from Sheets
+Due Date: 2026-07-20
+```
+
+---
+
+## Contacts
+
+Create, search, and manage contacts through the Google People API. Results are flattened into a consistent shape with primary email/phone plus the full lists. As an AI tool it is exposed as `google_contacts`.
+
+### Parameters
+
+<ParamField path="operation" type="select" default="create">
+  Operation to perform: create, list, search, get, update, or delete
+</ParamField>
+
+**Create**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `first_name` | string | yes | Given name |
+| `last_name` | string | no | Family name |
+| `email` | string | no | Email address |
+| `phone` | string | no | Phone number |
+| `company` | string | no | Organization name |
+| `job_title` | string | no | Job title |
+| `notes` | string | no | Free-text notes |
+
+**List**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page_size` | number | `100` | Contacts per page |
+| `page_token` | string | | Pagination cursor from a previous list call |
+| `sort_order` | select | `LAST_MODIFIED_DESCENDING` | Also `LAST_MODIFIED_ASCENDING`, `FIRST_NAME_ASCENDING`, `LAST_NAME_ASCENDING` |
+
+**Search** takes `query` (required) and `page_size` (default 30). **Get** and **delete** take `resource_name` (required, e.g. `people/c12345678`). **Update** takes `resource_name` (required) plus at least one of `first_name`, `last_name`, `email`, `phone`, `company`, `job_title`.
+
+### Output
+
+Each contact is returned in a flattened shape:
+
+```json
+{
+  "resource_name": "people/c12345678",
+  "display_name": "Rosy Sparrow",
+  "email": "rosy@example.com",
+  "phone": "+1 555 0100",
+  "company": "Acme Inc",
+  "job_title": "CTO",
+  "emails": ["rosy@example.com"],
+  "phones": ["+1 555 0100"]
+}
+```
+
+List returns `{contacts: [...], count, total_people, next_page_token}`; search returns `{contacts: [...], count}`; delete returns `{deleted: true, resource_name}`.
+
+### Example: Find a contact
+
+```
+Operation: search
+Query: rosy
+Page Size: 10
+```
+
+<Warning>
+Contact updates replace whole field groups — updating `email` wipes any additional emails on the contact — and deletion is immediate and final on Google's side.
+</Warning>
+
+---
+
+## Example: Daily agenda email
+
+A three-node workflow that mails you a summary of today's calendar.
+
+```
+[Calendar (list)] --> [AI Agent] --> [Gmail (send)]
+```
+
+1. **Calendar** — Operation: list, Start Date: `today`, End Date: `today+1d`, Order By: startTime
+2. **AI Agent** — Prompt: "Summarize today's events into a short agenda with times and titles."
+3. **Gmail** — Operation: send, To: your own address, Subject: `Today's agenda`, Body: the agent's summary
+
+Add a scheduler in front of the Calendar node to run it automatically each morning — see [Schedulers & Triggers](/nodes/schedulers).
+
+---
+
+## Tips
+
+<Tip>
+Gmail's **search** and Gmail Receive's **filter query** both use the exact query syntax you already know from the Gmail web UI (`from:`, `subject:`, `is:unread`, `has:attachment`).
+</Tip>
+
+<Tip>
+In Sheets, keep `USER_ENTERED` when you want `=SUM(A1:A5)` to become a live formula; switch to `RAW` when writing literal text that should not be interpreted.
+</Tip>
+
+<Warning>
+Delete operations (Calendar events, Tasks, Contacts) execute immediately and without confirmation. Be especially careful when exposing them to AI agents as tools.
+</Warning>
+
+---
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Email (IMAP/SMTP)" icon="envelope" href="/nodes/email">
+    Provider-agnostic email nodes for non-Gmail accounts
+  </Card>
+  <Card title="AI Agents" icon="robot" href="/nodes/ai-agent">
+    Use the Google nodes as AI tools
+  </Card>
+  <Card title="Schedulers & Triggers" icon="clock" href="/nodes/schedulers">
+    Run Google workflows on a schedule
+  </Card>
+  <Card title="AI Tools" icon="wrench" href="/nodes/tools">
+    More tools to combine with Workspace nodes
+  </Card>
+</CardGroup>
