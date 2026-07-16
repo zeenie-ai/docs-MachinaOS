@@ -3,9 +3,9 @@ title: Introduction
 description: Visual workflow automation platform with AI agents, WhatsApp, and Android integration
 ---
 
-# Welcome to MachinaOs
+# Welcome to OpenCompany
 
-MachinaOs is an open-source workflow automation platform inspired by n8n, built with React Flow and Python FastAPI. Create powerful automations using a visual node-based editor with real-time execution feedback.
+OpenCompany is an open-source workflow automation platform inspired by n8n, built with React Flow and Python FastAPI. Create powerful automations using a visual node-based editor with real-time execution feedback.
 
 <CardGroup cols={2}>
   <Card title="110+ Nodes" icon="cube">
@@ -15,22 +15,23 @@ MachinaOs is an open-source workflow automation platform inspired by n8n, built 
     Real-time status updates over a single WebSocket connection
   </Card>
   <Card title="AI-Powered" icon="brain">
-    11 LLM providers with conversation memory, tool calling, and thinking modes
+    12 LLM providers with conversation memory, tool calling, and thinking modes
   </Card>
   <Card title="Self-Hosted" icon="server">
-    Full control with the `machina` CLI, Temporal distributed execution, and encrypted credentials
+    Full control with the `company` CLI, Temporal distributed execution, and encrypted credentials
   </Card>
 </CardGroup>
 
 ## Key Features
 
 ### AI Integration
-Connect to 11 LLM providers with built-in conversation memory, tool calling, and thinking modes.
+Connect to 12 LLM providers with built-in conversation memory, tool calling, and thinking modes.
 
 - **OpenAI** - GPT-5.5/5.4/5.2, GPT-4.1/4.1-mini/nano, o3/o4-mini, GPT-4o/4o-mini with response format and reasoning effort
 - **Anthropic** - Claude Fable 5, Opus 4.8/4.7, Sonnet 4.6, Haiku 4.5 with extended thinking via `budget_tokens`
 - **Google Gemini** - Gemini 3.5 Flash, 3.1 Pro/Flash-Lite, 3 Flash, 2.5 Pro/Flash/Flash-Lite with multimodal support and thinking budget
 - **OpenRouter** - 200+ models via unified API (OpenAI, Claude, Llama, Mistral, and more)
+- **xAI** - Grok models via the OpenAI-compatible native chat path
 - **Groq** - Ultra-fast inference with Llama 3.3-70b, Llama 3.1-8b, GPT-OSS-120b/20b, Qwen3-32b
 - **Cerebras** - Ultra-fast inference on custom wafer-scale hardware (GPT-OSS-120b, Qwen-3-235b, GLM-4.7)
 - **DeepSeek** - V4 Flash + V4 Pro (up to 1M context)
@@ -79,7 +80,7 @@ Execute Python, JavaScript, and TypeScript directly in workflows.
 
 <CardGroup cols={2}>
   <Card title="Installation" icon="download" href="/installation">
-    Get MachinaOs running locally in minutes
+    Get OpenCompany running locally in minutes
   </Card>
   <Card title="Quick Start" icon="rocket" href="/quickstart">
     Build your first workflow in 5 minutes
@@ -94,7 +95,7 @@ Execute Python, JavaScript, and TypeScript directly in workflows.
 
 ## Architecture Overview
 
-MachinaOs follows n8n-inspired architectural patterns with modular backend services:
+OpenCompany follows n8n-inspired architectural patterns with modular backend services:
 
 | Layer | Technology |
 |-------|------------|
@@ -104,7 +105,7 @@ MachinaOs follows n8n-inspired architectural patterns with modular backend servi
 | Execution | Temporal distributed workflow execution |
 | WhatsApp | Go service with whatsmeow library |
 | Cache | Redis (production) / SQLite (dev) / Memory fallback |
-| Deployment | `machina deploy up --provider gcp` (Terraform + `machina serve` under systemd) |
+| Deployment | `company deploy up --provider gcp` (Terraform + `company serve` under systemd) |
 
 ### Backend Service Architecture
 
@@ -122,5 +123,5 @@ server/services/
 ```
 
 <Info>
-MachinaOs is designed for self-hosting. Your data stays on your infrastructure with automatic cache fallback for any environment.
+OpenCompany is designed for self-hosting. Your data stays on your infrastructure with automatic cache fallback for any environment.
 </Info>

@@ -1,11 +1,11 @@
 ---
 title: AI Chat Models
-description: 11 chat-model nodes including OpenAI, Anthropic, Gemini, OpenRouter, Groq, Cerebras, DeepSeek, Kimi, Mistral, Ollama, and LM Studio
+description: 12 chat-model nodes including OpenAI, Anthropic, Gemini, OpenRouter, xAI, Groq, Cerebras, DeepSeek, Kimi, Mistral, Ollama, and LM Studio
 ---
 
 # AI Chat Models
 
-MachinaOs ships **11 chat-model nodes**, with models fetched dynamically from each provider's API (and, for the local nodes, from your running server). The backend uses a hybrid architecture: a native SDK layer in `server/services/llm/` for direct chat completions, and a LangChain + LangGraph path for agent tool-calling.
+OpenCompany ships **12 chat-model nodes**, with models fetched dynamically from each provider's API (and, for the local nodes, from your running server). The backend uses a hybrid architecture: a native SDK layer in `server/services/llm/` for direct chat completions, and a LangChain + LangGraph path for agent tool-calling.
 
 ## Available Chat-Model Nodes
 
@@ -15,6 +15,7 @@ MachinaOs ships **11 chat-model nodes**, with models fetched dynamically from ea
 | Anthropic | Claude Fable 5, Opus 4.8/4.7, Sonnet 4.6, Haiku 4.5 | Coding, analysis, extended thinking |
 | Google Gemini | Gemini 3.5-flash, 3.1-pro/flash-lite, 3-flash, 2.5-pro/flash/flash-lite | Multimodal, long context (1M) |
 | OpenRouter | 200+ models | Access multiple providers via single API |
+| xAI | Grok models | Direct chat via the OpenAI-compatible xAI API |
 | Groq | Llama 3.3-70b, Llama 3.1-8b, GPT-OSS-120b/20b, Qwen3-32b | Ultra-fast inference (LPU) |
 | Cerebras | GPT-OSS-120b, Qwen-3-235b, GLM-4.7 | Ultra-fast on wafer-scale hardware |
 | DeepSeek | deepseek-v4-flash, deepseek-v4-pro | V4 with reasoning modes, up to 1M context |
@@ -24,7 +25,7 @@ MachinaOs ships **11 chat-model nodes**, with models fetched dynamically from ea
 | LM Studio | Whatever you've loaded locally | Local models, no API key |
 
 <Info>
-xAI (Grok) is **not** a chat-model node. It is available only through the internal native-chat path (the shared OpenAI-compatible provider with `base_url=https://api.x.ai/v1`). The two nodes new since older docs are **Ollama** and **LM Studio**, which connect to a local server running on your machine.
+xAI (Grok) is native-chat-only: it runs through the shared OpenAI-compatible provider with `base_url=https://api.x.ai/v1` and is not wired as an agent provider. **Ollama** and **LM Studio** connect to a local server running on your machine.
 </Info>
 
 ## Adding API Keys
@@ -35,7 +36,7 @@ xAI (Grok) is **not** a chat-model node. It is available only through the intern
 4. Click **Validate** to test
 
 <Info>
-API keys are encrypted and stored locally. They're never sent to MachinaOs servers.
+API keys are encrypted and stored locally. They're never sent to OpenCompany servers.
 </Info>
 
 ---
@@ -494,11 +495,11 @@ Mistral models support up to 256K context but do not have a thinking mode. Tempe
 
 ## Ollama (Local)
 
-Run models locally through an [Ollama](https://ollama.com) server. No API key is needed; instead you point MachinaOs at your running server's URL in the Credentials Modal (default `http://localhost:11434/v1`).
+Run models locally through an [Ollama](https://ollama.com) server. No API key is needed; instead you point OpenCompany at your running server's URL in the Credentials Modal (default `http://localhost:11434/v1`).
 
 ### Models
 
-The dropdown reflects **whatever you have pulled** into Ollama (e.g. `qwen2.5`, `llama3.x`, `phi-3`, `deepseek-r1`). MachinaOs probes your running server via the official Ollama Python SDK and reads per-model context length directly. When the server is offline the list is empty, cueing you to start it.
+The dropdown reflects **whatever you have pulled** into Ollama (e.g. `qwen2.5`, `llama3.x`, `phi-3`, `deepseek-r1`). OpenCompany probes your running server via the official Ollama Python SDK and reads per-model context length directly. When the server is offline the list is empty, cueing you to start it.
 
 ### Parameters
 
@@ -519,7 +520,7 @@ The dropdown reflects **whatever you have pulled** into Ollama (e.g. `qwen2.5`, 
 </ParamField>
 
 <Info>
-Traffic stays on your machine. MachinaOs sends requests to your local server URL, never to a cloud API.
+Traffic stays on your machine. OpenCompany sends requests to your local server URL, never to a cloud API.
 </Info>
 
 ---
@@ -530,7 +531,7 @@ Run models locally through the [LM Studio](https://lmstudio.ai) server. Like Oll
 
 ### Models
 
-The dropdown reflects **whatever you have loaded** in the LM Studio UI. MachinaOs probes the running server via the official LM Studio Python SDK and reads typed model info (context length, tool-use support, vision).
+The dropdown reflects **whatever you have loaded** in the LM Studio UI. OpenCompany probes the running server via the official LM Studio Python SDK and reads typed model info (context length, tool-use support, vision).
 
 ### Parameters
 
@@ -554,7 +555,7 @@ The dropdown reflects **whatever you have loaded** in the LM Studio UI. MachinaO
 
 ## Native SDK vs LangChain Path
 
-MachinaOs uses a hybrid architecture for LLM access:
+OpenCompany uses a hybrid architecture for LLM access:
 
 - **Native SDK path** (`server/services/llm/`): Used by `execute_chat()` for direct chat completions. Returns a normalized `LLMResponse` across providers. This path also serves the OpenAI-compatible providers including DeepSeek, Kimi, Mistral, xAI, Ollama, and LM Studio.
 - **LangChain path**: Used by `execute_agent()` and `execute_chat_agent()` for tool-calling agents via LangGraph. All chat-model providers are supported (Groq and Cerebras use this path for direct chat too).

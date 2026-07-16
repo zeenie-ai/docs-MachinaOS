@@ -1,11 +1,11 @@
 ---
 title: Installation
-description: Set up MachinaOs on your local machine or server
+description: Set up OpenCompany on your local machine or server
 ---
 
 # Installation
 
-MachinaOs runs locally with the `machina` CLI. For production, deploy to a cloud VM with `machina deploy`.
+OpenCompany runs locally with the `company` CLI. For production, deploy to a cloud VM with `company deploy`.
 
 ## Prerequisites
 
@@ -18,11 +18,11 @@ MachinaOs runs locally with the `machina` CLI. For production, deploy to a cloud
 
 <Tabs>
   <Tab title="Install the CLI">
-    Install MachinaOs globally and start it:
+    Install OpenCompany globally and start it:
 
     ```bash
-    npm install -g machina
-    machina start
+    npm install -g @zeenie/opencompany
+    company start
     ```
 
     The app will be available at:
@@ -33,14 +33,14 @@ MachinaOs runs locally with the `machina` CLI. For production, deploy to a cloud
     - Temporal Web UI: `http://localhost:8080`
 
     <Tip>
-      You can also run it without installing by using `npx machina start`.
+      After the global install the binary is `company`. The old `machina` command still exists only as a deprecated alias.
     </Tip>
   </Tab>
   <Tab title="From source">
     ```bash
     # Clone the repository
-    git clone https://github.com/zeenie-ai/MachinaOS.git
-    cd MachinaOS
+    git clone https://github.com/zeenie-ai/opencompany.git
+    cd opencompany
 
     # Build (installs client + server dependencies via uv)
     npm run build
@@ -52,23 +52,26 @@ MachinaOs runs locally with the `machina` CLI. For production, deploy to a cloud
     npm run dev
     ```
 
-    Under the hood the npm scripts call the `machina` CLI (`python -m cli start` / `dev` / `build`). The backend is managed by [uv](https://docs.astral.sh/uv/) (`uv sync` against `server/uv.lock`), not pip.
+    Under the hood the npm scripts call the `company` CLI (`python -m cli start` / `dev` / `build`). The backend is managed by [uv](https://docs.astral.sh/uv/) (`uv sync` against `server/uv.lock`), not pip.
   </Tab>
 </Tabs>
 
 ## CLI Commands
 
-The `machina` CLI (also available as `npx machina`) drives every lifecycle action:
+The `company` CLI drives every lifecycle action (`machina` still exists only as a deprecated alias):
 
 | Command | Description |
 |---------|-------------|
-| `machina start` | Start all services (production mode, clean output) |
-| `machina dev` | Start with hot-reload for development |
-| `machina build` | Install dependencies and build for production |
-| `machina serve` | Serve API + WebSocket + SPA on a single public port |
-| `machina stop` | Stop all running services |
-| `machina clean` | Clean build artifacts |
-| `machina deploy` | Provision a cloud VM running MachinaOs |
+| `company start` | Start all services (production mode, clean output) |
+| `company dev` | Start with hot-reload for development (`--force` re-bundles Vite deps, `--daemon` binds the backend to 0.0.0.0) |
+| `company build` | Install dependencies and build for production |
+| `company serve` | Serve API + WebSocket + SPA on a single public port |
+| `company stop` | Stop all running services |
+| `company clean` | Clean build artifacts |
+| `company deploy` | Provision a cloud VM running OpenCompany (`up` / `status` / `destroy`) |
+| `company daemon` | Run the backend as a detached process (`start` / `stop` / `status` / `restart`) |
+| `company version sync` | Sync package versions from the latest git tag |
+| `company docs nodes` | Rebuild (or `--check`) the per-node documentation index |
 
 Useful flags: `--verbose` / `-v` (full service logs), `--skip-whatsapp` (skip the WhatsApp service).
 
@@ -127,7 +130,7 @@ GOOGLE_MAPS_API_KEY=
 ## Verify Installation
 
 1. Open `http://localhost:3000` in your browser
-2. You should see the MachinaOs workflow editor
+2. You should see the OpenCompany workflow editor
 3. Check the backend health: `curl http://localhost:3010/health`
 
 <Check>
@@ -136,17 +139,13 @@ If you see the workflow canvas with the component palette, installation is compl
 
 ## Production Deployment
 
-The recommended way to run MachinaOs in production is `machina deploy`, which provisions a login-gated cloud VM (currently Google Cloud) using your cloud CLI plus Terraform, then runs MachinaOs on a single port via `machina serve` under systemd:
+The recommended way to run OpenCompany in production is `company deploy`, which provisions a login-gated cloud VM (currently Google Cloud) using your cloud CLI plus Terraform, then runs OpenCompany on a single port via `company serve` under systemd:
 
 ```bash
-machina deploy up --provider gcp --owner-email you@example.com   # provision + install + print URL/creds
-machina deploy status                                            # show URL + health
-machina deploy destroy                                           # tear down
+company deploy up --provider gcp --owner-email you@example.com   # provision + install + print URL/creds
+company deploy status                                            # show URL + health
+company deploy destroy                                           # tear down
 ```
-
-<Info>
-  Docker Compose is a legacy/optional path and is no longer the recommended deployment method. If you need the container topology for reference, use `machina docker:up` from source.
-</Info>
 
 ## Troubleshooting
 
@@ -156,7 +155,7 @@ machina deploy destroy                                           # tear down
   VITE_CLIENT_PORT=3001
   PYTHON_BACKEND_PORT=3011
   ```
-  MachinaOs also uses ports 3020 (Node.js executor), 9400 (WhatsApp), 7233 (Temporal gRPC), 8080 (Temporal Web UI), and 6379 (Redis, when enabled).
+  OpenCompany also uses ports 3020 (Node.js executor), 9400 (WhatsApp), 7233 (Temporal gRPC), 8080 (Temporal Web UI), and 6379 (Redis, when enabled).
 </Accordion>
 
 <Accordion title="Python dependencies fail">
@@ -171,10 +170,10 @@ machina deploy destroy                                           # tear down
 <Accordion title="Services won't start">
   Stop everything cleanly, then start again with full logs:
   ```bash
-  machina stop
-  machina start -v
+  company stop
+  company start -v
   ```
-  If a build looks stale, run `machina clean` before `machina build`.
+  If a build looks stale, run `company clean` before `company build`.
 </Accordion>
 
 ## Next Steps

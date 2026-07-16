@@ -21,7 +21,7 @@ WhatsApp Send and WhatsApp DB are dual-purpose: they work as standalone workflow
 
 ## Setup Requirements
 
-1. WhatsApp service running (starts automatically with `machina start`)
+1. WhatsApp service running (starts automatically with `company start`)
 2. WhatsApp account for pairing
 3. Scan QR code to link device
 
@@ -337,11 +337,11 @@ Respect WhatsApp's terms of service. Don't send spam or bulk unsolicited message
 ## Troubleshooting
 
 <Accordion title="QR code not appearing">
-  The WhatsApp service (whatsapp-rpc) starts automatically with `machina start`
+  The WhatsApp service (whatsapp-rpc) starts automatically with `company start`
   and listens on port 9400. Restart all services if the QR code doesn't appear:
   ```bash
-  npx machina stop
-  npx machina start
+  company stop
+  company start
   ```
 </Accordion>
 
