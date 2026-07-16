@@ -1,0 +1,120 @@
+---
+title: "Telegram bot in 10 minutes"
+description: "Build a free AI-powered Telegram bot with a token from @BotFather"
+---
+
+You will build a Telegram bot that answers any message with an AI reply — three nodes, no paid accounts, no webhooks, no public server. The same three-node pattern ships as the "AI Assistant" example workflow, so you are recreating a first-class OpenCompany workflow from scratch.
+
+<Info>
+**Time**: about 10 minutes. **You need**: OpenCompany running locally, one AI provider key already added ([Add API keys](/add-api-keys)), and a Telegram account. The bot token itself is free — no developer program, no approval wait.
+</Info>
+
+<Steps>
+  <Step title="Create a bot with @BotFather">
+    In Telegram, open a chat with **@BotFather**, send `/newbot`, and follow the prompts: pick a display name, then a username ending in `bot`.
+
+    BotFather replies with "Done!" and an HTTP API token that looks like `123456789:ABCdefGHIjklMNOpqrSTUvwxYZ`. Copy it — this token is the only credential the whole tutorial needs.
+  </Step>
+
+  <Step title="Add the token to OpenCompany">
+    In OpenCompany, click the key icon in the toolbar to open **API Credentials**, select **Telegram Bot**, paste the token into the **Bot Token** field, and click **Validate**.
+
+    The field shows **Valid** — the validation message includes your bot's username, confirming the right bot is linked — and the provider gets a green **Connected** badge.
+  </Step>
+
+  <Step title="DM your bot once">
+    Back in Telegram, open a chat with your new bot and send it any message (a simple "hi" works).
+
+    This first private message lets OpenCompany capture your chat id automatically, so replies addressed to "self" route straight to your account. If you prefer, you can instead paste your id into the **Your Chat ID (optional)** field on the same credentials panel — DM **@userinfobot** to find it — but the one-message capture is easier.
+  </Step>
+
+  <Step title="Add the three nodes">
+    The Telegram nodes live in the palette's **Social** section, which only appears in Dev mode — flip the toolbar Mode toggle from **Normal** to **Dev**. Then drag three nodes onto the canvas: **Telegram Receive** and **Telegram Send** from **Social**, and **AI Agent** from **AI Agents**.
+
+    You should now have three unconnected nodes on the canvas: a trigger, an agent, and a send action.
+  </Step>
+
+  <Step title="Connect them">
+    Drag from Telegram Receive's output handle (the circle on its right edge) to AI Agent's main input handle (left edge), then from AI Agent's output to Telegram Send's input.
+
+    Two edges appear: Receive feeds the Agent, and the Agent feeds Send. This is the entire data path — message in, reply out.
+  </Step>
+
+  <Step title="Configure the agent">
+    Double-click **AI Agent** to open its parameters. Pick your provider and model from the two dropdowns (any provider whose key you added — the example workflow uses Gemini). Leave the prompt field empty — the agent automatically uses the incoming Telegram message as its prompt. Click **Save**.
+
+    The panel closes and the agent node is configured. Optionally set a system message such as "You are a helpful assistant" to shape the bot's tone.
+  </Step>
+
+  <Step title="Configure Telegram Send">
+    Double-click **Telegram Send**. Keep the defaults — Recipient Type `self`, Message Type `text`, Parse Mode `Auto` — and set the **Text** parameter to:
+
+    ```
+    {{aiagent.response}}
+    ```
+
+    This is a template variable: at run time it resolves to the AI Agent's `response` output field, so whatever the model writes becomes the outgoing message. Click **Save**.
+  </Step>
+
+  <Step title="Start the workflow">
+    Save the workflow, then click the green **Start** button in the toolbar.
+
+    The button turns into **Stop**, and Telegram Receive begins pulsing — it has entered its waiting state and is listening for incoming messages.
+
+    Trigger nodes never show an "executing" state of their own: the pulse means listening, and it is the downstream nodes that light up when a run starts.
+  </Step>
+
+  <Step title="Talk to your bot">
+    In Telegram, send your bot a question — "what is the tallest mountain in Europe?"
+
+    On the canvas, the nodes light up in sequence — Receive fires, the Agent thinks, Send delivers — and a few seconds later the AI's answer arrives in your Telegram chat. You can watch the run's log lines in the **Console** tab of the bottom panel.
+
+    Each incoming message spawns its own independent run, so you can keep the conversation going — the trigger goes back to waiting as soon as a run begins.
+  </Step>
+</Steps>
+
+<Check>
+You built a working AI-powered Telegram bot: incoming messages trigger the workflow, the agent generates a reply, and the answer lands back in Telegram. It keeps responding to every message for as long as the workflow is running — click **Stop** when you want it offline.
+</Check>
+
+## How it works
+
+**Telegram Receive** is a trigger node: while the workflow is running it waits for messages arriving through your bot and starts a run for each one that passes its filters. The **AI Agent** takes the message text as its prompt, calls your configured model, and emits the reply in its `response` output field. **Telegram Send** resolves the `{{aiagent.response}}` template against that output and delivers the text to your chat — `self` routes to the chat id captured from your first DM.
+
+## Make it yours
+
+A few one-parameter upgrades, all on the nodes you already placed:
+
+- **Only answer you**: on Telegram Receive, set **Sender Filter** to `self` — the bot ignores everyone except its owner. This is how the shipped "AI Assistant" example configures it.
+- **Only answer on a trigger word**: set **Sender Filter** to `keywords` and list comma-separated words; matching is a case-insensitive substring check.
+- **Text-only input**: set **Content Type Filter** to `text` so photos and stickers do not start runs.
+- **Formatted replies**: leave Telegram Send's **Parse Mode** on `Auto` — markdown in the model's reply is converted to Telegram formatting automatically, with a plain-text retry if Telegram rejects it.
+- **Quiet delivery**: enable **Silent** on Telegram Send to deliver replies without a notification sound.
+- **Quote the question**: set Telegram Send's **Reply To Message Id** to `{{telegramreceive.message_id}}` so each answer arrives as a reply to the message that asked it.
+
+## Troubleshooting
+
+If a run goes wrong, the failing node turns red on the canvas and the error text shows in the **Console** tab. The common ones:
+
+- **Run fails with "Telegram bot not connected"**
+  The bot token is missing or was never validated. Reopen **API Credentials**, select **Telegram Bot**, and validate the token again.
+
+- **Telegram Send fails with "Bot owner not detected"**
+  Your chat id was never captured, so the `self` recipient has nowhere to go. DM the bot once from your own account, or paste your id into **Your Chat ID (optional)** on the credentials panel.
+
+- **Nothing happens when you message the bot**
+  Confirm the toolbar shows **Stop** (meaning the workflow is running) and that your message passes Telegram Receive's filters — with **Ignore Bots** on (the default), messages sent by other bots are skipped.
+
+- **Replies arrive as one wall of unformatted text**
+  Check Telegram Send's **Parse Mode** is still `Auto`; that is what converts the model's markdown into Telegram formatting.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Messaging & Social nodes" icon="comments" href="/nodes/messaging">
+    Every Telegram, Twitter/X, and unified social node parameter in detail
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    The broader OpenCompany tour: canvas, agents, and deployment
+  </Card>
+</CardGroup>

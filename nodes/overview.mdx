@@ -18,23 +18,23 @@ The node palette groups plugins by category. The exact node count grows as new p
 | Specialized Agents | Android, Coding, Web, Task, Social, Travel, Tool, Productivity, Payments, Consumer, Autonomous, Orchestrator, AI Employee, RLM, Claude Code, Codex |
 | [AI Skills](/nodes/skills) | Master Skill aggregator (built-in skill library) |
 | [AI Tools](/nodes/tools) | Calculator, Time, DuckDuckGo, Task Manager, Write Todos |
-| Search | Brave, Serper, Perplexity (dual-purpose) |
-| Google Workspace | Gmail, Gmail Receive, Calendar, Drive, Sheets, Tasks, Contacts |
+| [Search](/nodes/search) | Brave, DuckDuckGo, Serper, Perplexity (dual-purpose) |
+| [Google Workspace](/nodes/google-workspace) | Gmail, Gmail Receive, Calendar, Drive, Sheets, Tasks, Contacts |
 | [WhatsApp](/nodes/whatsapp) | Send, Receive, DB query (dual-purpose) |
-| Twitter/X | Send, Search, User, Receive (dual-purpose) |
-| Telegram | Send, Receive |
-| Social (unified) | socialReceive, socialSend |
-| Email | Send, Read, Receive (IMAP/SMTP, dual-purpose) |
-| Stripe | Stripe action (CLI pass-through), Stripe receive (webhook trigger) |
+| [Twitter/X](/nodes/messaging) | Send, Search, User, Receive (dual-purpose) |
+| [Telegram](/nodes/messaging) | Send, Receive |
+| [Social (unified)](/nodes/messaging) | Social Send, Social Receive |
+| [Email](/nodes/email) | Send, Read, Receive (IMAP/SMTP, dual-purpose) |
+| [Stripe](/nodes/stripe) | Stripe action (CLI pass-through), Stripe receive (webhook trigger) |
 | [Android](/nodes/android) | Device control and monitoring (16 service nodes) |
 | Location | Google Maps (create, geocode, nearby) |
-| Code Executors | Python, Monty (sandboxed Python), JavaScript, TypeScript (dual-purpose) |
-| Filesystem and Shell | File read, file modify, shell (Nushell), fs search, process manager |
-| Browser | Interactive browser automation (dual-purpose) |
+| [Code Executors](/nodes/code) | Python, Monty (sandboxed Python), JavaScript, TypeScript (dual-purpose) |
+| [Filesystem and Shell](/nodes/filesystem) | File read, file modify, shell, fs search, process manager |
+| [Browser](/nodes/browser) | Browser and Browser Harness automation (dual-purpose) |
 | [Webhooks and Utilities](/nodes/webhooks) | HTTP, webhook trigger/response, chat trigger, console, team monitor |
-| Proxy | Residential proxy request, config, status |
+| [Proxy](/nodes/scraping) | Residential proxy request, config, status |
 | [Documents](/nodes/documents) | RAG pipeline: scrape, parse, embed, store |
-| Web Scraping | Apify actor, Crawlee scraper |
+| [Web Scraping](/nodes/scraping) | Apify actor, Crawlee scraper |
 | Chat | Chat send, chat history |
 | [Schedulers](/nodes/schedulers) | Timer, cron scheduler |
 | Workflow triggers | Start, task trigger |
@@ -79,7 +79,7 @@ Access upstream data using template syntax:
 **Examples:**
 ```
 {{webhookTrigger.body}}           // Webhook request body
-{{openaiChatModel.response}}      // AI model response
+{{aiAgent.response}}              // AI Agent's answer
 {{batteryMonitor.level}}          // Battery percentage
 {{whatsappReceive.text}}          // Message content
 ```
@@ -95,9 +95,7 @@ Access nested objects with dot notation:
 
 ## Node Configuration
 
-### Opening Parameters
-1. **Click** the node to select it
-2. **Click gear icon** or **double-click** to open parameter panel
+Click a node to open its parameter panel — the full editing how-to (adding, connecting, renaming, copying, deleting, shortcuts, palette modes) lives on [The canvas](/canvas).
 
 ### Parameter Types
 
@@ -145,24 +143,6 @@ During execution, nodes show their state:
 - Don't execute independently
 
 **Examples:** Simple Memory, AI Models
-
-## Renaming Nodes
-
-Give nodes meaningful names:
-1. Press **F2** with node selected
-2. Or **double-click** the node label
-3. Or **right-click** > Rename
-
-## Copying Nodes
-
-1. Select node(s)
-2. Press **Ctrl+C** to copy
-3. Press **Ctrl+V** to paste
-
-## Deleting Nodes
-
-1. Select node(s)
-2. Press **Delete** or **Backspace**
 
 ## Best Practices
 

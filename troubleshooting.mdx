@@ -1,0 +1,141 @@
+---
+title: "Troubleshooting"
+description: "Fixes for the most common install and runtime problems"
+---
+
+Work top to bottom. Each fix takes under two minutes. Commands go in the terminal (the text command app — Terminal on macOS, PowerShell on Windows).
+
+## First: restart cleanly
+
+Most problems clear with a clean restart:
+
+```bash
+company stop
+```
+
+```bash
+company start
+```
+
+You should see:
+
+```
+OpenCompany v0.0.94
+Frontend:  http://localhost:3000
+Backend:   http://localhost:3010
+```
+
+Still stuck? Run the built-in health check and read what it reports:
+
+```bash
+company doctor
+```
+
+## Install problems
+
+<AccordionGroup>
+  <Accordion title="Node or Python is too old">
+    Check your versions:
+
+    ```bash
+    node --version
+    ```
+
+    You should see `v22` or higher. Then:
+
+    ```bash
+    python --version
+    ```
+
+    You should see `3.12` or higher. If either is older, install the current version from [nodejs.org](https://nodejs.org) or [python.org/downloads](https://www.python.org/downloads/), then reinstall OpenCompany.
+  </Accordion>
+  <Accordion title="ERROR: Python 3.12+ is required">
+    Same fix as above: install Python 3.12+ from [python.org/downloads](https://www.python.org/downloads/).
+    On Windows, tick the **Add python.exe to PATH** checkbox in the installer, then open a new terminal window.
+  </Accordion>
+  <Accordion title="Installation failed! Try: company build">
+    Run the build and read its first error line — that line names the real problem:
+
+    ```bash
+    company build
+    ```
+  </Accordion>
+  <Accordion title="Windows: install or startup is very slow, or hangs">
+    Windows Defender scans every new Python file, which can slow the first run badly or even hang it.
+    Add the app's Python folder to Defender's exclusions: open **Windows Security** → **Virus &amp; threat protection** → **Manage settings** → **Exclusions** → **Add or remove exclusions** → **Add an exclusion** → **Folder**, and pick the `server\.venv` folder inside your OpenCompany install. A reboot after first install also helps.
+  </Accordion>
+</AccordionGroup>
+
+## Startup problems
+
+<AccordionGroup>
+  <Accordion title="Port already in use">
+    A port is a numbered door another app may already hold open. OpenCompany uses: 3000 (the app in your browser), 3010 (backend), 3020 (code runner), 9400 (WhatsApp), 7233 and 8080 (Temporal engine).
+
+    First try:
+
+    ```bash
+    company stop
+    ```
+
+    If another program owns the port, change OpenCompany's ports in the `.env` file (the settings file inside the install folder): set `VITE_CLIENT_PORT` or `PYTHON_BACKEND_PORT` to a free number and start again.
+  </Accordion>
+  <Accordion title="Services won't start after an update">
+    Rebuild from a clean slate:
+
+    ```bash
+    company clean
+    ```
+
+    ```bash
+    company build
+    ```
+
+    ```bash
+    company start
+    ```
+
+    <Note>
+    `company clean` removes downloaded packages, so the next build re-downloads them and the first start afterward is slower.
+    </Note>
+  </Accordion>
+</AccordionGroup>
+
+## In-app problems
+
+<AccordionGroup>
+  <Accordion title="The page at localhost:3000 is blank">
+    Hard-refresh the browser (Ctrl+Shift+R, or Cmd+Shift+R on macOS). If it stays blank, restart with `company stop` then `company start` and reload.
+  </Accordion>
+  <Accordion title="The app says it lost connection (WebSocket)">
+    The browser talks to the backend over a live connection. Check the backend is up by opening `http://localhost:3010/health` — you should see a short OK response. If not, restart with `company stop` then `company start`.
+  </Accordion>
+  <Accordion title="Database is locked">
+    Two copies of the backend are fighting over the same database file. Run `company stop`, wait a few seconds, and start again. If it persists, restart your computer — a stuck process is holding the file.
+  </Accordion>
+  <Accordion title="Memory usage keeps climbing">
+    Stop workflows you are not using (press **Stop** in the toolbar) and close unused browser tabs of the app. Restarting with `company stop` / `company start` resets memory.
+  </Accordion>
+</AccordionGroup>
+
+## Workflow problems
+
+<AccordionGroup>
+  <Accordion title="My trigger never fires">
+    Triggers only listen after you press **Start** in the top toolbar. A listening trigger node shows a gentle pulse. If the button reads **Start** (not **Stop**), the workflow is not running.
+  </Accordion>
+  <Accordion title="The AI node fails with an authentication error">
+    Your key is missing or invalid. Click the key icon (**API Credentials**) in the toolbar, select your provider, re-enter the key, and click **Validate**. You should see **Valid** and a green **Connected** badge.
+  </Accordion>
+  <Accordion title="I typed in Chat but nothing replied">
+    Two usual causes. First, the workflow must be running — press **Start**. Second, replies appear in the **Console** tab (right side of the Chat / Console panel), not as chat bubbles — and the workflow needs a Console node connected after the agent to print there.
+  </Accordion>
+</AccordionGroup>
+
+## Still stuck
+
+Open an issue at [github.com/zeenie-ai/opencompany/issues](https://github.com/zeenie-ai/opencompany/issues).
+
+<Tip>
+Run `company doctor` first and paste its output into the issue — it answers most of the questions a maintainer would ask.
+</Tip>

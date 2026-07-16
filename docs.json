@@ -16,54 +16,102 @@
     "default": "dark"
   },
   "navigation": {
-    "dropdowns": [
+    "tabs": [
       {
-        "dropdown": "Documentation",
-        "icon": "book",
+        "tab": "Get Started",
+        "icon": "rocket",
         "groups": [
           {
-            "group": "Getting Started",
-            "pages": [
-              "introduction",
-              "installation",
-              "quickstart",
-              "architecture"
-            ]
+            "group": "Start here",
+            "icon": "flag",
+            "pages": ["introduction", "how-it-works", "choose-how-to-run"]
           },
           {
+            "group": "Set it up",
+            "icon": "download",
+            "pages": ["installation", "add-api-keys", "first-chat"]
+          },
+          {
+            "group": "Build your first workflow",
+            "icon": "diagram-project",
+            "pages": ["quickstart"]
+          },
+          {
+            "group": "When something breaks",
+            "icon": "life-ring",
+            "pages": ["troubleshooting", "faq"]
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "icon": "map",
+        "groups": [
+          {
             "group": "Tutorials",
+            "icon": "graduation-cap",
             "pages": [
               "tutorials/first-workflow",
+              "tutorials/telegram-bot",
               "tutorials/ai-agent-workflow",
               "tutorials/whatsapp-automation",
               "tutorials/android-automation"
             ]
           },
           {
-            "group": "Node Catalog",
+            "group": "Deploy",
+            "icon": "cloud-arrow-up",
+            "pages": ["deployment/production"]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "icon": "book",
+        "groups": [
+          {
+            "group": "Concepts",
+            "icon": "lightbulb",
+            "pages": ["architecture", "canvas", "credentials"]
+          },
+          {
+            "group": "Node catalog",
+            "icon": "cubes",
             "pages": [
               "nodes/overview",
-              "nodes/ai-models",
-              "nodes/ai-agent",
-              "nodes/skills",
-              "nodes/tools",
-              "nodes/whatsapp",
-              "nodes/android",
-              "nodes/documents",
-              "nodes/webhooks",
-              "nodes/schedulers"
-            ]
-          },
-          {
-            "group": "Deployment",
-            "pages": [
-              "deployment/production"
-            ]
-          },
-          {
-            "group": "FAQ",
-            "pages": [
-              "faq"
+              {
+                "group": "AI",
+                "icon": "brain",
+                "pages": ["nodes/ai-models", "nodes/ai-agent", "nodes/skills", "nodes/tools"]
+              },
+              {
+                "group": "Integrations",
+                "icon": "plug",
+                "pages": [
+                  "nodes/google-workspace",
+                  "nodes/email",
+                  "nodes/messaging",
+                  "nodes/whatsapp",
+                  "nodes/stripe",
+                  "nodes/android"
+                ]
+              },
+              {
+                "group": "Web & Data",
+                "icon": "globe",
+                "pages": [
+                  "nodes/search",
+                  "nodes/browser",
+                  "nodes/scraping",
+                  "nodes/documents",
+                  "nodes/webhooks"
+                ]
+              },
+              {
+                "group": "Code & System",
+                "icon": "terminal",
+                "pages": ["nodes/code", "nodes/filesystem", "nodes/schedulers"]
+              }
             ]
           }
         ]
@@ -76,7 +124,12 @@
         "label": "GitHub",
         "href": "https://github.com/zeenie-ai/opencompany"
       }
-    ]
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get Started",
+      "href": "https://docs.zeenie.xyz/installation"
+    }
   },
   "footerSocials": {
     "github": "https://github.com/zeenie-ai/opencompany"

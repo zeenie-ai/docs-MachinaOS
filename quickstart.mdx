@@ -1,123 +1,111 @@
 ---
-title: Quick Start
-description: Build your first workflow in 5 minutes
+title: "Your first workflow"
+description: "Build a chat pipeline from an empty canvas: Chat Trigger, AI Agent, Console"
 ---
 
-# Quick Start
-
-Let's create a simple workflow that responds to a webhook with an AI-generated message.
-
-## Step 1: Create a New Workflow
-
-1. Open OpenCompany at `http://localhost:3000`
-2. Click **File > New Workflow** or press `Ctrl+N`
-3. You'll see an empty canvas with a component palette on the left
-
-## Step 2: Add a Webhook Trigger
-
-1. In the component palette, expand **Utilities**
-2. Drag **Webhook Trigger** onto the canvas
-3. Click the node to select it, then click the **gear icon** to configure:
-
-```
-Path: hello
-Method: POST
-```
-
-<Tip>
-Your webhook will be available at `http://localhost:3010/webhook/hello`
-</Tip>
-
-## Step 3: Add an AI Chat Model
-
-1. Expand **AI Models** in the palette
-2. Drag **OpenAI Chat Model** onto the canvas
-3. Position it to the right of the Webhook Trigger
-4. Connect them by dragging from the Webhook's output handle to the AI model's input handle
-
-### Configure the AI Model
-
-Click the gear icon and set:
-
-```
-Model: gpt-5.5
-Temperature: 0.7
-```
-
-<Tip>
-Pick any model the provider offers. OpenAI currently exposes GPT-5.5 / 5.4 / 5.2, GPT-4.1 / 4.1-mini / 4.1-nano, o3 / o4-mini, and GPT-4o / 4o-mini.
-</Tip>
-
-<Warning>
-You need an OpenAI API key. Click the **key icon** in the toolbar to add it.
-</Warning>
-
-## Step 4: Set the Prompt
-
-In the AI model's parameters, set the **Prompt**:
-
-```
-You are a friendly assistant. The user sent: {{webhookTrigger.body}}
-
-Respond with a helpful greeting.
-```
-
 <Info>
-The `{{webhookTrigger.body}}` syntax pulls data from the webhook's output.
+About 10 minutes. You need OpenCompany [installed](/installation) and one AI key added (or a local model) — see [Add your AI key](/add-api-keys). If you have not run the ready-made example yet, [Your first chat](/first-chat) is a faster win.
 </Info>
 
-## Step 5: Add a Webhook Response
-
-1. Drag **Webhook Response** from Utilities
-2. Connect the AI model's output to the Webhook Response input
-3. Configure it:
+You will build the same pipeline the AI Assistant example uses, from scratch: a **Chat Trigger** that receives your message, an **AI Agent** that thinks, and a **Console** that prints the answer.
 
 ```
-Status Code: 200
-Body: {{openaiChatModel.response}}
-Content Type: application/json
+[Chat Trigger] --> [AI Agent] --> [Console]
 ```
 
-## Step 6: Deploy and Test
+## Build it
 
-1. Click the **Deploy** button (purple) in the toolbar
-2. Your workflow is now listening for webhooks
+<Steps>
+  <Step title="Create a new workflow">
+    Open `http://localhost:3000`, then click **File** in the top toolbar and choose **New Workflow**.
+    An empty canvas appears with the component palette on the left.
+  </Step>
+  <Step title="Switch the palette to Dev mode">
+    In the top toolbar, find the **Mode:** toggle and click **Dev**.
+    More sections appear in the palette.
 
-### Test with curl
+    <Info>
+    The palette's **Normal** mode shows only the AI sections. The Chat Trigger and Console nodes live in the **Utilities** section, which is visible in **Dev** mode. Nothing else changes — Dev is just "show me everything."
+    </Info>
+  </Step>
+  <Step title="Add the three nodes">
+    Drag these from the palette onto the canvas, left to right:
 
-```bash
-curl -X POST http://localhost:3010/webhook/hello \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Hello from curl!"}'
-```
+    1. **Chat Trigger** — in **Utilities** (or type "chat" in the palette search box)
+    2. **AI Agent** — in **AI Agents**
+    3. **Console** — in **Utilities**
 
-You should receive an AI-generated response!
+    Three boxes now sit on your canvas.
+  </Step>
+  <Step title="Connect them">
+    Drag from the small circle on the right edge of **Chat Trigger** to the circle on the left edge of **AI Agent**.
+    A line appears between them. Repeat from **AI Agent**'s right edge to **Console**'s left edge.
+  </Step>
+  <Step title="Pick the agent's model">
+    Click the **AI Agent** node.
+    Its settings panel opens. Choose your **provider** (the one you added a key for) and a **model** from the dropdowns.
 
-## Your First Workflow
+    Leave the **prompt** field empty — the agent automatically answers whatever message flows in from the trigger.
 
-Your completed workflow looks like this:
+    <Note>
+    Model dropdown empty? Your key is missing: click the key icon (**API Credentials**) in the toolbar and [add one](/add-api-keys).
+    </Note>
+  </Step>
+  <Step title="Save and start">
+    Press **Save** in the top toolbar, then press the green **Start** button.
+    **Start** changes to **Stop**, and the Chat Trigger begins a gentle pulse — it is listening.
+  </Step>
+  <Step title="Talk to it">
+    Open the **Chat / Console** panel at the bottom. Type a message into **Type a message...** and press **Send**.
+    Then click the **Console** tab on the right — the AI's reply appears there.
+  </Step>
+</Steps>
 
-```
-[Webhook Trigger] --> [OpenAI Chat] --> [Webhook Response]
-```
+{/* TODO(screenshot): three-node workflow on the canvas with the Chat / Console panel open */}
 
 <Check>
-Congratulations! You've built your first OpenCompany workflow.
+Your own three-node workflow answered you. That is the core loop of everything in OpenCompany: trigger, think, deliver.
 </Check>
 
-## What's Next?
+## Make it remember the conversation
+
+Right now the agent forgets everything between messages. Give it memory:
+
+1. In the palette, drag **Simple Memory** (in **AI Tools**) onto the canvas.
+2. Connect Simple Memory's top handle to the **left-side memory handle** on the AI Agent (the middle connector on its left edge).
+3. Press **Save**, then **Stop** and **Start** to restart the workflow.
+
+Now ask a question, then a follow-up — the agent remembers what you said.
+
+## Make it yours
+
+- Click the AI Agent and write a **system message** like "Answer in pirate speak" — then chat again.
+- Swap the model from the dropdown and compare answers.
+- Add a **DuckDuckGo Search** node (in **AI Tools**) and connect it to the agent's tools handle — the agent can now search the web when it needs to. See [Web Search](/nodes/search).
+
+<Accordion title="Advanced: trigger it over HTTP instead of chat">
+  Prefer to call your workflow from other software? Replace the Chat Trigger with a **Webhook Trigger** (in **Utilities**) configured with path `hello`, keep the AI Agent and Console, and press **Start**. Then send a request from the terminal:
+
+  ```bash
+  curl -X POST http://localhost:3010/webhook/hello -H "Content-Type: application/json" -d "{\"message\": \"Hello!\"}"
+  ```
+
+  The agent's reply prints in the **Console** tab, exactly like the chat version. To return the reply to the caller instead, add a **Webhook Response** node after the agent. See [Webhooks & HTTP](/nodes/webhooks).
+</Accordion>
+
+## What's next
 
 <CardGroup cols={2}>
-  <Card title="AI Agent Tutorial" icon="robot" href="/tutorials/ai-agent-workflow">
-    Build an AI agent with memory and tools
+  <Card title="Telegram bot in 10 minutes" icon="paper-plane" href="/tutorials/telegram-bot">
+    Put this same pipeline behind a real messaging app — free.
   </Card>
-  <Card title="WhatsApp Automation" icon="whatsapp" href="/tutorials/whatsapp-automation">
-    Automate WhatsApp messages
+  <Card title="AI Agent deep-dive" icon="robot" href="/tutorials/ai-agent-workflow">
+    Memory, tools, and how agents decide what to do.
   </Card>
-  <Card title="Node Catalog" icon="grid" href="/nodes/overview">
-    Explore every node category
+  <Card title="The canvas" icon="pen-ruler" href="/canvas">
+    Modes, panels, shortcuts, and everything on screen.
   </Card>
-  <Card title="Deployment" icon="server" href="/deployment/production">
-    Deploy to production
+  <Card title="Node catalog" icon="cubes" href="/nodes/overview">
+    Every node you can drag onto the canvas.
   </Card>
 </CardGroup>

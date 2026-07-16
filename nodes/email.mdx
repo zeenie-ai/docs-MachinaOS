@@ -1,0 +1,291 @@
+---
+title: "Email"
+description: "Send, read, and react to email over IMAP and SMTP with any mail provider"
+---
+
+# Email
+
+Three provider-agnostic email nodes that work with any IMAP/SMTP mail account: send messages, read and manage your mailbox, and trigger workflows when new mail arrives. Under the hood they drive the [Himalaya](https://github.com/pimalaya/himalaya) CLI, so anything Himalaya can talk to, these nodes can too.
+
+If your mail lives in Gmail and you want richer, API-native operations (labels, Gmail search syntax, OAuth sign-in), use the dedicated [Google Workspace](/nodes/google-workspace) nodes instead. The nodes on this page are the right choice for Outlook, Yahoo, iCloud, ProtonMail, Fastmail, self-hosted servers — or Gmail over plain IMAP.
+
+| Node | Kind | What it does |
+|------|------|--------------|
+| Email Send | Action + AI tool | Send an email over SMTP |
+| Email Read | Action + AI tool | List, search, read, move, delete, and flag messages over IMAP |
+| Email Receive | Trigger (polling) | Fires when a new email lands in a watched folder |
+
+---
+
+## Set up an email account
+
+Click the key icon to open **API Credentials** and select **Email (IMAP/SMTP)** under the Email category. The panel provides:
+
+- A **provider** dropdown with built-in presets: Gmail, Outlook, Yahoo, iCloud, ProtonMail, Fastmail, and custom. Presets fill in the IMAP/SMTP host, port, and encryption for you.
+- **Email address** and **password** inputs.
+- A custom IMAP/SMTP block (host + port for each) that appears only when the provider is **custom** — for self-hosted or unlisted servers.
+- **Save** writes the credentials; **Remove** clears them.
+
+Most providers expect an app password here rather than your regular login. An app password is a single-purpose password your mail provider generates specifically for third-party apps, so you never hand out your real account password.
+
+| Provider | Password to use | Notes |
+|----------|-----------------|-------|
+| Gmail | App Password | Requires 2-Step Verification; generate under Google Account → Security |
+| Outlook / Office 365 | Account or App Password | |
+| Yahoo | App Password | |
+| iCloud | App-Specific Password | Generate at appleid.apple.com |
+| ProtonMail | Bridge password | Requires ProtonMail Bridge running locally |
+| Fastmail | App Password | Generate under Settings → Privacy & Security |
+| Custom | Whatever your server accepts | Fill in the IMAP/SMTP host and port fields |
+
+<Warning>
+The `himalaya` CLI must be installed and on your PATH — install via `brew install himalaya`, `cargo install himalaya`, or the pre-built binaries on its GitHub releases page. If it is missing, the nodes return an error with install instructions.
+</Warning>
+
+You can also override any credential field per node: a node parameter always wins over the provider preset, which wins over the stored credential.
+
+---
+
+## Email Send
+
+Send an email over SMTP. Also usable as an AI tool (`email_send`) — wire it to an AI Agent's tools handle and the agent fills the same parameters.
+
+### Parameters
+
+<ParamField path="provider" type="select" default="gmail">
+  `gmail`, `outlook`, `yahoo`, `icloud`, `protonmail`, `fastmail`, or `custom` — picks the connection preset
+</ParamField>
+
+<ParamField path="to" type="string" required>
+  Recipient(s), comma-separated
+</ParamField>
+
+<ParamField path="subject" type="string" required>
+  Email subject line
+</ParamField>
+
+<ParamField path="body" type="string">
+  Email body — plain text or HTML depending on `body_type`
+</ParamField>
+
+<ParamField path="cc" type="string">
+  CC recipients
+</ParamField>
+
+<ParamField path="bcc" type="string">
+  BCC recipients
+</ParamField>
+
+<ParamField path="body_type" type="select" default="text">
+  `text` or `html`. HTML sends a `multipart/alternative` MIME message.
+</ParamField>
+
+### Output
+
+```json
+{
+  "from": "you@example.com"
+}
+```
+
+The result includes `from` (the resolved sender address) merged with whatever the underlying send command returns — often an empty object on success, or `raw_output` when the CLI output is not JSON.
+
+### Example: Send a status update
+
+```
+Provider: gmail
+To: team@example.com
+Subject: Nightly build finished
+Body: The nightly build completed successfully.
+Body Type: text
+```
+
+<Warning>
+Attachments are not supported — the node composes a single text or HTML part.
+</Warning>
+
+---
+
+## Email Read
+
+Read and manage an IMAP mailbox: list envelopes, search, fetch a full message, list folders, move, delete, and flag. One node, seven operations selected by the **Operation** parameter. Also usable as an AI tool (`email_read`).
+
+| Operation | Description |
+|-----------|-------------|
+| list | List envelopes in a folder (paginated) |
+| search | Search a folder with Himalaya query syntax |
+| read | Fetch one full message by ID |
+| folders | List all folders |
+| move | Move a message to another folder |
+| delete | Delete a message |
+| flag | Add or remove a flag on a message |
+
+### Parameters
+
+<ParamField path="provider" type="select" default="gmail">
+  Connection preset (same choices as Email Send)
+</ParamField>
+
+<ParamField path="operation" type="select" default="list">
+  `list`, `search`, `read`, `folders`, `move`, `delete`, or `flag`
+</ParamField>
+
+<ParamField path="folder" type="string" default="INBOX">
+  IMAP folder to operate on
+</ParamField>
+
+Operation-specific parameters:
+
+| Parameter | Used by | Default | Description |
+|-----------|---------|---------|-------------|
+| `query` | search | | Himalaya search expression, e.g. `from:alice subject:invoice` |
+| `message_id` | read, move, delete, flag | | IMAP message ID |
+| `target_folder` | move | | Destination folder |
+| `flag` | flag | | `Seen`, `Answered`, `Flagged`, `Draft`, or `Deleted` |
+| `flag_action` | flag | `add` | `add` or `remove` |
+| `page` | list, search | `1` | 1-based page number |
+| `page_size` | list, search | `20` | Items per page (1-500) |
+
+### Output
+
+```json
+{
+  "operation": "list",
+  "folder": "INBOX",
+  "data": [
+    {"id": "1042", "from": "alice@example.com", "subject": "Invoice #204", "date": "2026-07-15"}
+  ]
+}
+```
+
+The result always echoes `operation` and `folder`. When the CLI returns a JSON object its keys are merged in; a list is wrapped under `data`; non-JSON output lands in `raw_output`.
+
+### Example: Find invoices
+
+```
+Operation: search
+Folder: INBOX
+Query: from:billing subject:invoice
+Page Size: 20
+```
+
+<Warning>
+The `delete` operation is permanent and does not ask for confirmation — treat it carefully, especially when this node is exposed to an AI agent as a tool.
+</Warning>
+
+---
+
+## Email Receive
+
+Polling trigger that fires when a new email lands in a watched IMAP folder. The first poll establishes a baseline so existing mail is not replayed; subsequent polls diff message IDs to detect new arrivals.
+
+### Parameters
+
+<ParamField path="provider" type="select" default="gmail">
+  Connection preset (same choices as Email Send)
+</ParamField>
+
+<ParamField path="folder" type="string" default="INBOX">
+  IMAP folder to watch
+</ParamField>
+
+<ParamField path="poll_interval" type="number" default="60">
+  Seconds between polls (clamped to 30-3600)
+</ParamField>
+
+<ParamField path="filter_query" type="string">
+  Reserved — not currently applied during polling
+</ParamField>
+
+<ParamField path="mark_as_read" type="boolean" default="false">
+  Add the `Seen` flag to the new message after fetching it
+</ParamField>
+
+### Output
+
+```json
+{
+  "message_id": "1043",
+  "folder": "INBOX",
+  "from": "customer@example.com",
+  "to": "support@example.com",
+  "subject": "Order question",
+  "date": "2026-07-15T09:12:00Z",
+  "body": "Hi, I have a question about my order..."
+}
+```
+
+`message_id` and `folder` are always present; the remaining fields are whatever the message read returns (`from`, `to`, `subject`, `date`, `body`, ...).
+
+### Example: Watch the support inbox
+
+```
+Provider: fastmail
+Folder: INBOX
+Poll Interval: 60
+Mark As Read: true
+```
+
+<Warning>
+Only the first new message per poll cycle is emitted — others arriving in the same window are absorbed into the baseline. The baseline is in-memory, so mail arriving while the server is offline will not fire the trigger after a restart.
+</Warning>
+
+---
+
+## Example: Auto-reply triage
+
+Answer incoming support mail automatically:
+
+```
+[Email Receive] --> [AI Agent] --> [Email Send]
+```
+
+1. **Email Receive**
+   - Folder: `INBOX`
+   - Poll Interval: 60
+   - Mark As Read: true
+
+2. **AI Agent**
+   - Prompt: "Read the incoming email and draft a short, polite reply. If it is a billing question, say the billing team will follow up within one business day."
+
+3. **Email Send**
+   - To: the sender of the incoming message
+   - Subject: `Re:` plus the original subject
+   - Body: the agent's draft
+
+Deploy the workflow so the trigger keeps polling continuously instead of running once.
+
+---
+
+## Tips
+
+<Tip>
+Provider presets cover the connection details — for the seven built-in providers you only ever enter your address and an app password.
+</Tip>
+
+<Tip>
+ProtonMail requires the ProtonMail Bridge running locally; the preset already points at the Bridge's local IMAP/SMTP ports.
+</Tip>
+
+<Tip>
+Wire Email Send and Email Read to the same AI Agent to build a full mailbox assistant: the agent can search, read, and reply within a single conversation.
+</Tip>
+
+---
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Google Workspace" icon="envelope" href="/nodes/google-workspace">
+    API-native Gmail nodes with OAuth sign-in
+  </Card>
+  <Card title="AI Agents" icon="robot" href="/nodes/ai-agent">
+    Use the email nodes as AI tools
+  </Card>
+  <Card title="Schedulers & Triggers" icon="clock" href="/nodes/schedulers">
+    Combine email with scheduled workflows
+  </Card>
+  <Card title="Messaging & Social" icon="comments" href="/nodes/messaging">
+    Telegram, Twitter/X, and social nodes
+  </Card>
+</CardGroup>

@@ -1,127 +1,54 @@
 ---
-title: Introduction
-description: Visual workflow automation platform with AI agents, WhatsApp, and Android integration
+title: "What is OpenCompany?"
+description: "Your own AI assistant that does real work - on your machine, with your keys, no subscription"
 ---
 
-# Welcome to OpenCompany
+OpenCompany is a free, open-source app that lets you build AI-powered automations by drawing them. Drag boxes onto a canvas, connect them with lines, press **Start** — and your AI answers messages, searches the web, reads files, sends emails, and more. Everything runs on your own computer.
 
-OpenCompany is an open-source workflow automation platform inspired by n8n, built with React Flow and Python FastAPI. Create powerful automations using a visual node-based editor with real-time execution feedback.
+## What you can build
+
+- A chat assistant that answers you in the app — or through a **Telegram bot** you set up in ten minutes.
+- A morning digest: read your calendar, have the AI summarize the day, email it to you.
+- A research helper: an agent that searches the web on its own and reports back with sources.
+- A WhatsApp auto-responder that drafts replies in your tone.
+- A scheduled job that watches a folder, summarizes new files, and logs the result.
+
+## Why people pick it
 
 <CardGroup cols={2}>
-  <Card title="110+ Nodes" icon="cube">
-    AI models, specialized agents, Google Workspace, WhatsApp, Telegram, Twitter/X, Android, documents, webhooks, and more
+  <Card title="Runs on your machine" icon="house">
+    No account, no cloud, no subscription. Your workflows, data, and keys stay local.
   </Card>
-  <Card title="WebSocket-First" icon="bolt">
-    Real-time status updates over a single WebSocket connection
+  <Card title="Bring any AI" icon="brain">
+    12 providers (11 dedicated model nodes, plus xAI through the OpenAI-compatible path) — or run free local models with Ollama and LM Studio.
   </Card>
-  <Card title="AI-Powered" icon="brain">
-    12 LLM providers with conversation memory, tool calling, and thinking modes
+  <Card title="110+ nodes" icon="cubes">
+    Messaging, Google Workspace, email, search, browsers, code, files, payments, Android, and more.
   </Card>
-  <Card title="Self-Hosted" icon="server">
-    Full control with the `company` CLI, Temporal distributed execution, and encrypted credentials
+  <Card title="Real agents" icon="robot">
+    Agents with memory and tools that decide for themselves when to search, read, or act — plus 16 ready-made specialist agents.
   </Card>
 </CardGroup>
 
-## Key Features
+## Who it's for
 
-### AI Integration
-Connect to 12 LLM providers with built-in conversation memory, tool calling, and thinking modes.
+**If you've never automated anything:** the [Get Started path](/how-it-works) assumes nothing. Install with two commands, chat with an AI in minutes, then build your first workflow by dragging three boxes.
 
-- **OpenAI** - GPT-5.5/5.4/5.2, GPT-4.1/4.1-mini/nano, o3/o4-mini, GPT-4o/4o-mini with response format and reasoning effort
-- **Anthropic** - Claude Fable 5, Opus 4.8/4.7, Sonnet 4.6, Haiku 4.5 with extended thinking via `budget_tokens`
-- **Google Gemini** - Gemini 3.5 Flash, 3.1 Pro/Flash-Lite, 3 Flash, 2.5 Pro/Flash/Flash-Lite with multimodal support and thinking budget
-- **OpenRouter** - 200+ models via unified API (OpenAI, Claude, Llama, Mistral, and more)
-- **xAI** - Grok models via the OpenAI-compatible native chat path
-- **Groq** - Ultra-fast inference with Llama 3.3-70b, Llama 3.1-8b, GPT-OSS-120b/20b, Qwen3-32b
-- **Cerebras** - Ultra-fast inference on custom wafer-scale hardware (GPT-OSS-120b, Qwen-3-235b, GLM-4.7)
-- **DeepSeek** - V4 Flash + V4 Pro (up to 1M context)
-- **Kimi** - Moonshot K2.6 / K2.5 / K2.7-code (256K context)
-- **Mistral** - Large / Medium / Small / Codestral (up to 256K context)
-- **Ollama** - Run your locally-pulled models via a local Ollama server
-- **LM Studio** - Run models loaded in the local LM Studio server
-- **AI Agent** - Agent loop with tool calling and iterative reasoning
-- **Chat Agent** - Conversational agent (Zeenie) with skill support for multi-turn chat
-- **16 Specialized Agents** - Android, Coding, Web, Task, Social, Travel, Tool, Productivity, Payments, Consumer, Autonomous, Orchestrator, AI Employee, RLM, Claude Code, Codex
-- **Simple Memory** - Markdown-based conversation history with long-term vector storage
+**If you're a developer:** it's a plugin-first Python/FastAPI backend with a React Flow canvas, Temporal-backed durable execution, and one-folder-per-node plugins. The [Architecture](/architecture) page has the internals, and the [source is on GitHub](https://github.com/zeenie-ai/opencompany).
 
-### WhatsApp Automation
-Send and receive WhatsApp messages with event-driven triggers.
-
-- QR code pairing via Go WhatsApp bridge (whatsmeow)
-- Message filtering: sender, group, keywords, forwarded status
-- Group/sender name persistence for display
-
-### Android Device Control
-Automate Android devices via local ADB or remote WebSocket relay.
-
-**16 Service Nodes:**
-- System Monitoring: battery, network, system info, location
-- App Management: launcher, app list
-- Device Automation: WiFi, Bluetooth, audio, device state, screen control, airplane mode
-- Sensors: motion detection, environmental sensors
-- Media: camera control, media playback
-
-### Webhooks & HTTP
-Event-driven webhook triggers and HTTP client for external APIs.
-
-- Dynamic webhook endpoints at `/webhook/{path}`
-- HTTP Request node with GET, POST, PUT, DELETE, PATCH
-- Webhook Response for custom responses
-
-### Code Execution
-Execute Python, JavaScript, and TypeScript directly in workflows.
-
-- Syntax-highlighted editor with per-theme code colors
-- Access to `input_data` from connected nodes
-- Console output capture
-- Sandboxed Python execution via Monty with enforced time and memory limits
-
-## Quick Links
+## Start here
 
 <CardGroup cols={2}>
-  <Card title="Installation" icon="download" href="/installation">
-    Get OpenCompany running locally in minutes
+  <Card title="How it works" icon="lightbulb" href="/how-it-works">
+    Workflows, nodes, and agents in plain language.
   </Card>
-  <Card title="Quick Start" icon="rocket" href="/quickstart">
-    Build your first workflow in 5 minutes
+  <Card title="Choose how to run it" icon="route" href="/choose-how-to-run">
+    Your computer, a cloud server, or from source.
   </Card>
-  <Card title="Node Catalog" icon="grid" href="/nodes/overview">
-    Explore the full node library
+  <Card title="Install" icon="download" href="/installation">
+    Two commands, about five minutes.
   </Card>
-  <Card title="Tutorials" icon="graduation-cap" href="/tutorials/first-workflow">
-    Step-by-step guides
+  <Card title="Your first chat" icon="message" href="/first-chat">
+    See it work before you build anything.
   </Card>
 </CardGroup>
-
-## Architecture Overview
-
-OpenCompany follows n8n-inspired architectural patterns with modular backend services:
-
-| Layer | Technology |
-|-------|------------|
-| Frontend | React 19, TypeScript, React Flow, Tailwind + shadcn/ui, Zustand, TanStack Query |
-| Backend | Python FastAPI, SQLAlchemy, plugin-first node system |
-| Real-time | WebSocket-first status + RPC |
-| Execution | Temporal distributed workflow execution |
-| WhatsApp | Go service with whatsmeow library |
-| Cache | Redis (production) / SQLite (dev) / Memory fallback |
-| Deployment | `company deploy up --provider gcp` (Terraform + `company serve` under systemd) |
-
-### Backend Service Architecture
-
-```
-server/services/
-├── workflow.py              # Facade (~460 lines)
-├── node_executor.py         # Registry-based dispatch
-├── parameter_resolver.py    # Template variable resolution
-├── deployment/              # Event-driven lifecycle
-│   ├── manager.py           # Deploy, cancel, status
-│   └── triggers.py          # Cron and event triggers
-└── execution/               # Parallel orchestration
-    ├── executor.py          # Conductor decide pattern
-    └── cache.py             # Redis/SQLite persistence
-```
-
-<Info>
-OpenCompany is designed for self-hosting. Your data stays on your infrastructure with automatic cache fallback for any environment.
-</Info>

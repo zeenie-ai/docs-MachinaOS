@@ -17,7 +17,11 @@ A chatbot that:
 ## Prerequisites
 
 - OpenCompany running locally
-- An AI provider API key (OpenAI, Anthropic, Google, or any of the 11 supported providers)
+- An AI provider API key ([Add your AI key](/add-api-keys))
+
+<Tip>
+No key? Point the agent at a free local model instead: install Ollama or LM Studio, connect it in **API Credentials**, and pick it as the provider below - zero cost.
+</Tip>
 
 ## Step 1: Add the AI Agent
 
@@ -44,7 +48,7 @@ Model: claude-opus-4-8
 Temperature: 0.7
 ```
 
-You can pick any of the 11 providers: OpenAI, Anthropic, Gemini, OpenRouter, Groq, Cerebras, DeepSeek, Kimi, Mistral, Ollama, or LM Studio. Model options update automatically based on the provider you choose (for example, OpenAI offers `gpt-5.5`, Anthropic offers `claude-opus-4-8` / `claude-sonnet-4-6`, Gemini offers `gemini-3.5-flash`).
+You can pick any of the 11 agent providers (xAI is chat-only and not available for agents): OpenAI, Anthropic, Gemini, OpenRouter, Groq, Cerebras, DeepSeek, Kimi, Mistral, Ollama, or LM Studio. Model options update automatically based on the provider you choose (for example, OpenAI offers `gpt-5.5`, Anthropic offers `claude-opus-4-8` / `claude-sonnet-4-6`, Gemini offers `gemini-3.5-flash`).
 
 <Tip>
 Claude excels at reasoning, Gemini handles multimodal input, and Ollama / LM Studio let you run local models on your own machine. The standalone **Chat Model** nodes (e.g. OpenAI Chat Model, Claude Chat Model) are for using a model on its own outside an agent -- you do not need one to power the AI Agent.
@@ -111,9 +115,9 @@ You are a helpful assistant. You remember our conversation history.
 Be concise and friendly in your responses.
 ```
 
-## Step 7: Deploy and Test
+## Step 7: Start and Test
 
-1. Click **Deploy**
+1. Press the green **Start** button in the top toolbar
 2. Test with curl:
 
 ```bash

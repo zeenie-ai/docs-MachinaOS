@@ -1,0 +1,54 @@
+---
+title: "Choose how to run OpenCompany"
+description: "Run it on your computer, on a cloud server, or from source - pick the path that fits you"
+---
+
+There are three ways to run OpenCompany. Most people should start with the first one.
+
+## Option 1: On your computer (recommended)
+
+Install it once, open your browser, and everything runs privately on your machine.
+
+- **You need:** Node.js 22+ and Python 3.12+ (the install guide walks you through both)
+- **Takes:** 2-10 minutes and about 1 GB of disk space
+- **Costs:** nothing — and nothing leaves your computer
+
+<Card title="Install OpenCompany" icon="download" href="/installation">
+  The step-by-step install guide, including one-command installers.
+</Card>
+
+## Option 2: On a cloud server
+
+Want your workflows running around the clock, even with your laptop closed? One command provisions a cloud server (a rented computer that never sleeps) with a login screen in front of it:
+
+```bash
+company deploy up --provider gcp --owner-email you@example.com
+```
+
+You need a Google Cloud account and the `gcloud` command-line tool. The deploy prints your server's address and a one-time password when it finishes.
+
+<Card title="Deploy to production" icon="cloud-arrow-up" href="/deployment/production">
+  The full cloud deployment guide.
+</Card>
+
+## Option 3: From source (for developers)
+
+Clone the code, build it yourself, and hack on it with hot reload. This path needs a few extra developer tools.
+
+<Card title="Run from source" icon="code" href="/installation#for-developers">
+  The contributor setup in the install guide.
+</Card>
+
+## Compare
+
+| | On your computer | Cloud server | From source |
+|---|---|---|---|
+| Cost | Free | Cloud provider fees | Free |
+| Difficulty | Easy | Moderate | Developer-level |
+| Always on | Only while running | Yes | Only while running |
+| Your data lives | On your machine | On your server | On your machine |
+| Login screen | None (private) | Yes (owner account) | None |
+
+<Info>
+Whichever path you pick, you bring your own AI keys — or run free local models. See [Add your AI key](/add-api-keys).
+</Info>

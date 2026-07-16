@@ -9,8 +9,13 @@ Automate WhatsApp messaging with OpenCompany. Receive messages, process them, an
 
 ## Prerequisites
 
-- OpenCompany running with the WhatsApp service
-- A WhatsApp account for pairing
+<Info>
+**Takes:** ~15 minutes. **You need:** OpenCompany running, one AI key ([Add your AI key](/add-api-keys)), a WhatsApp account on your phone, and npm available (the WhatsApp bridge installs itself on first use). Pairing uses one of your WhatsApp "linked devices" slots and drops if the service stops.
+</Info>
+
+<Tip>
+Want a simpler first messaging bot? The [Telegram tutorial](/tutorials/telegram-bot) needs only a free token — no phone pairing.
+</Tip>
 
 ## Understanding WhatsApp Nodes
 
@@ -63,36 +68,41 @@ Ignore Own Messages: true
 
 ## Step 3: Add an AI Response
 
-1. Drag **OpenAI Chat Model** onto the canvas
-2. Connect WhatsApp Receive output to AI input
-3. Configure:
+1. Drag **AI Agent** from the **AI Agents** palette section onto the canvas
+2. Connect WhatsApp Receive's output to the AI Agent's main input (top-left handle)
+3. Click the agent and configure:
 
 ```
-Model: gpt-4.1-mini
-Prompt: "Reply to this WhatsApp message: {{whatsappReceive.text}}"
+Provider: your provider (for example openai)
+Model: pick from the dropdown
+Prompt: Reply helpfully to this WhatsApp message: {{whatsappReceive.text}}
 ```
+
+<Note>
+Model dropdown empty? Add your provider key first — key icon (**API Credentials**) in the toolbar.
+</Note>
 
 ## Step 4: Send the Response
 
 1. Drag **WhatsApp Send** onto the canvas
-2. Connect AI output to WhatsApp Send input
+2. Connect the AI Agent's output to WhatsApp Send's input
 3. Configure:
 
 ```
 Phone Number: {{whatsappReceive.sender_phone}}
-Message: {{openaiChatModel.response}}
+Message: {{aiAgent.response}}
 ```
 
 ## Complete Workflow
 
 ```
-[WhatsApp Receive] --> [OpenAI Chat] --> [WhatsApp Send]
+[WhatsApp Receive] --> [AI Agent] --> [WhatsApp Send]
 ```
 
-## Step 5: Deploy
+## Step 5: Start it
 
-1. Click **Deploy**
-2. Send a message to your linked WhatsApp number
+1. Press the green **Start** button in the top toolbar
+2. Send a message to your linked WhatsApp number from another phone
 3. The workflow triggers and sends an AI response
 
 ## Available Data from WhatsApp Receive
@@ -156,7 +166,7 @@ Group: [Select from dropdown]
 </Accordion>
 
 <Accordion title="Messages not being received">
-  - Verify the trigger is deployed (not just saved)
+  - Verify the workflow is started (**Start** pressed, not just saved)
   - Check "Ignore Own Messages" setting
   - Ensure filters aren't too restrictive
 </Accordion>

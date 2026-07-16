@@ -262,10 +262,10 @@ Contact Phone: 1234567890
 ### Auto-Responder
 
 ```
-[WhatsApp Receive] --> [OpenAI Chat] --> [WhatsApp Send]
+[WhatsApp Receive] --> [AI Agent] --> [WhatsApp Send]
 ```
 
-**AI Prompt:**
+**AI Agent Prompt:**
 ```
 Respond to this customer message: {{whatsappReceive.text}}
 Be helpful and professional.
@@ -275,7 +275,7 @@ Be helpful and professional.
 ```
 Recipient Type: phone
 Phone: {{whatsappReceive.sender_phone}}
-Message: {{openaiChatModel.response}}
+Message: {{aiAgent.response}}
 ```
 
 ### Group Monitor

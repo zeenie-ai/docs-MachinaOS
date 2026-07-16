@@ -1,0 +1,218 @@
+---
+title: "Browser Automation"
+description: "Drive a real browser from your workflows: navigate, click, type, and extract"
+---
+
+Three families of nodes touch the web, and they solve different problems. **Web search** (see [Web Search](/nodes/search)) finds pages and returns snippets. **Scraping** (see [Scraping & Proxies](/nodes/scraping)) fetches and extracts content from pages you already know. **Browser automation** -- this page -- drives an actual browser session so a workflow or agent can navigate, click, type, and read pages that require real interaction.
+
+Two nodes live here:
+
+| Node | Engine | Maturity |
+|------|--------|----------|
+| Browser | `agent-browser` CLI with a bundled Chrome-for-Testing (or your system browser) | Stable |
+| Browser Harness | Your real Chrome over raw CDP (`browser-use/browser-harness`) | Alpha / experimental |
+
+Default to **Browser**. Reach for **Browser Harness** when the task needs your real Chrome profile and logins, bot-hostile or shadow-DOM-heavy sites, iframes, or raw CDP access.
+
+---
+
+## Browser
+
+Interactive browser automation via the `agent-browser` CLI. Also usable as an AI agent tool (tool name `browser`).
+
+**First-use install is automatic.** The node installs `agent-browser` from npm into OpenCompany's shared package tree on first use (`npm` must be on PATH), then fetches the Chrome-for-Testing runtime -- a roughly 150 MB Chromium download -- so expect the very first run to take a while.
+
+### Operations
+
+14 discrete operations plus a `batch` meta-operation:
+
+| Operation | What it does |
+|-----------|--------------|
+| `navigate` | Open a URL (requires **URL**) |
+| `click` | Click an element (requires **Selector**) |
+| `type` | Type text keystroke-by-keystroke into an element |
+| `fill` | Set an input's value directly |
+| `screenshot` | Capture the page (optional full-page, annotation, png/jpeg) |
+| `snapshot` | Accessibility-tree snapshot with stable `@eN` element refs |
+| `get_text` / `get_html` | Extract text or HTML from an element |
+| `eval` | Evaluate a JavaScript expression (requires **Expression**) |
+| `wait` | Wait for a selector to appear |
+| `scroll` | Scroll in a direction by an amount |
+| `select` | Choose a dropdown option |
+| `console` / `errors` | Read the page's console output / errors |
+| `batch` | Run a JSON array of commands in one call |
+
+Operations that act on an element -- `click`, `type`, `fill`, `get_text`, `get_html`, `wait`, `select` -- require **Selector** (a CSS selector or an `@eN` ref from a snapshot).
+
+The recommended agent loop is `navigate` -> `snapshot` -> `click`/`fill` using the `@eN` refs the snapshot returned -> `snapshot` again to verify.
+
+### Key parameters
+
+<ParamField path="operation" type="select" default="navigate">
+  One of the operations above
+</ParamField>
+
+<ParamField path="url" type="string">
+  Target URL (required for `navigate`)
+</ParamField>
+
+<ParamField path="selector" type="string">
+  CSS selector or `@eN` ref from a snapshot (required for element operations)
+</ParamField>
+
+<ParamField path="session" type="string">
+  Session id. Leave empty to use a per-run session -- cookies, open tabs, and auth persist across sequential operations that share the same session, and every browser call in one workflow/agent run (including delegated sub-agents) reuses one browser instance.
+</ParamField>
+
+<ParamField path="browser" type="select" default="chrome">
+  `chrome`, `edge`, `chromium`, `bundled_explicit` (the bundled Chrome-for-Testing), or `custom` (set **Executable Path**)
+</ParamField>
+
+<ParamField path="headed" type="boolean" default="true">
+  Show the browser window; disable for headless runs
+</ParamField>
+
+<ParamField path="timeout" type="number" default="30">
+  Per-action timeout in seconds (1-600)
+</ParamField>
+
+Additional knobs: `full_page` / `annotate` / `screenshot_format` / `screenshot_quality` (screenshots), `direction` / `amount` (scroll), `commands` (batch JSON), `auto_connect` (reuse an already-running CDP browser), `chrome_profile`, `user_agent`, `proxy`, `action_delay`, `executable_path`, `new_window`.
+
+### Output
+
+```json
+{
+  "operation": "get_text",
+  "data": "...the CLI's result for the operation...",
+  "session": "opencompany_a1b2c3d4"
+}
+```
+
+`data` is whatever `agent-browser` returned for the operation (parsed JSON when available, raw text otherwise). Responses larger than 100 KB are truncated.
+
+### Sessions and limits
+
+- Concurrent browser instances are capped by `BROWSER_MAX_INSTANCES` (default 3); when the cap would be exceeded, the oldest session is closed first.
+- Idle browsers shut themselves down after `BROWSER_IDLE_TIMEOUT_MS` (default 600000 ms; 0 disables).
+
+---
+
+## Browser Harness
+
+<Warning>
+**Browser Harness is alpha and experimental.** It wraps the upstream `browser-use/browser-harness` project (v0.1.x) and executes agent-authored Python with your real, logged-in Chrome attached. Treat it as a power tool: it is visible in dev mode only, and its operations are marked destructive. Default to the stable **Browser** node.
+</Warning>
+
+Browser Harness drives your **real Chrome** over the Chrome DevTools Protocol (CDP) -- no Playwright, no bundled Chromium. That means it sees your actual profile, cookies, and logins, which is exactly why it exists: sites that defeat headless automation or need your session state.
+
+It is a sibling of the **Browser** node, not a replacement:
+
+| | Browser (agent-browser) | Browser Harness |
+|---|---|---|
+| Engine | npm CLI + bundled Chrome-for-Testing (or system browser) | Your real Chrome over raw CDP |
+| Interaction | Accessibility tree, `@eN` refs | Screenshots + coordinate clicks + `js()` |
+| Sessions | Named sessions, instance cap, idle timeout | One shared browser |
+| Agent surface | Structured operations | Freeform Python against helpers |
+| Maturity | Stable | Alpha (v0.1.x) |
+
+### Chrome must be started with remote debugging
+
+The harness needs a CDP-reachable Chrome. It discovers one in this order:
+
+1. A `BU_CDP_URL` (or `BU_CDP_WS`) environment variable pointing at a dedicated automation Chrome.
+2. The `DevToolsActivePort` file Chrome writes when you enable **chrome://inspect/#remote-debugging** ("Allow remote debugging for this browser instance").
+3. A port probe on 9222/9223 -- e.g. Chrome launched with `--remote-debugging-port=9222`.
+
+If calls fail with connection guidance, run the **doctor** operation first -- it returns the full connection checklist.
+
+### Operations
+
+<ParamField path="operation" type="select" default="run_python">
+  `run_python` (primary), `goto`, `screenshot`, `js`, `tabs`, or `doctor`
+</ParamField>
+
+<ParamField path="code" type="code">
+  Python for `run_python`. Roughly 25 helpers are pre-imported (`goto_url`, `click_at_xy`, `capture_screenshot`, `js`, `fill_input`, `wait_for_load`, ...). Print a JSON object as the final line for structured output.
+</ParamField>
+
+<ParamField path="url" type="string">
+  URL to open (for `goto`)
+</ParamField>
+
+<ParamField path="expression" type="string">
+  JavaScript to evaluate in the page (for `js`)
+</ParamField>
+
+<ParamField path="full_page" type="boolean" default="false">
+  Capture the full scrollable page (for `screenshot`)
+</ParamField>
+
+<ParamField path="timeout" type="number" default="60">
+  Script timeout in seconds (5-600)
+</ParamField>
+
+The driving model is "the LLM writes Python": agents follow a see-act-verify loop of `capture_screenshot()` to see the page, `click_at_xy(x, y)` to interact, `wait_for_load()`, then `js(...)` for DOM reads.
+
+### Output
+
+```json
+{
+  "operation": "run_python",
+  "data": "…whatever the script printed…"
+}
+```
+
+### Install
+
+Install is lazy: first use runs `uv tool install --python 3.12 browser-harness`, so `uv` must be on PATH. If the node reports that browser-harness could not be installed, install uv and retry -- it installs automatically on the next use.
+
+---
+
+## Example: check a page and summarize
+
+Fetch a live page in a real browser, extract the visible text, and have an agent summarize it:
+
+```
+[Cron Scheduler] --> [Browser (navigate)] --> [Browser (get_text)] --> [AI Agent] --> [Console]
+```
+
+1. **Browser** #1 -- **Operation**: `navigate`, **URL**: `https://news.ycombinator.com`.
+2. **Browser** #2 -- **Operation**: `get_text`, **Selector**: `body`. Leave **Session** empty on both nodes; they share the per-run session automatically, so the second node reads the page the first one opened.
+3. **AI Agent** -- prompt it to summarize the extracted text.
+
+Alternatively, connect a single **Browser** node to the agent's tools input and let the agent drive the navigate/snapshot/click loop itself.
+
+---
+
+## Tips
+
+<Tip>
+Prefer `snapshot` + `@eN` refs over hand-written CSS selectors when an agent drives the browser -- the refs are stable within a page state and survive minor DOM differences.
+</Tip>
+
+<Tip>
+Leave **Session** empty in agent workflows. Every call in the same run reuses one browser automatically, while separate runs stay isolated.
+</Tip>
+
+<Warning>
+The very first Browser run downloads the Chrome-for-Testing runtime (~150 MB). Later runs start fast.
+</Warning>
+
+---
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Scraping & Proxies" icon="spider" href="/nodes/scraping">
+    Fetch and extract known pages without a full browser
+  </Card>
+  <Card title="Web Search" icon="magnifying-glass" href="/nodes/search">
+    Find pages before you open them
+  </Card>
+  <Card title="AI Agents" icon="robot" href="/nodes/ai-agent">
+    Let an agent drive the browser as a tool
+  </Card>
+  <Card title="Code Executors" icon="code" href="/nodes/code">
+    Post-process extracted content
+  </Card>
+</CardGroup>

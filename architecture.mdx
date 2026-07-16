@@ -5,9 +5,14 @@ description: Deep dive into OpenCompany system architecture, execution engine, A
 
 # Architecture
 
-A detailed look at how OpenCompany works under the hood. For contributors, system designers, and the curious. For a navigable tour with hyperlinks, see the [DeepWiki page](https://deepwiki.com/zeenie-ai/OpenCompany).
+A detailed look at how OpenCompany works under the hood. For contributors, system designers, and the curious. You do not need this page to use OpenCompany. For a navigable tour with hyperlinks, see the [DeepWiki page](https://deepwiki.com/zeenie-ai/OpenCompany).
 
 ## System Overview
+
+
+<Frame caption="The three tiers: React canvas, FastAPI backend, execution engines">
+  <img src="/images/diagrams/system-overview.svg" alt="System overview diagram" />
+</Frame>
 
 OpenCompany is three loosely-coupled tiers talking over a single persistent WebSocket connection:
 
@@ -68,6 +73,11 @@ OpenCompany is three loosely-coupled tiers talking over a single persistent WebS
 </CardGroup>
 
 ## Execution Engine
+
+
+<Frame caption="How a workflow run flows through the execution engine">
+  <img src="/images/diagrams/execution-flow.svg" alt="Execution flow diagram" />
+</Frame>
 
 ### Conductor's Decide Pattern
 
@@ -164,6 +174,11 @@ Scheduler:
 Under the default Temporal execution path, each deployed trigger runs as a listener workflow that spawns an isolated child run per event. On the legacy local path, push triggers register a waiter with a filter closure and suspend until an external service dispatches a matching event (in-memory `asyncio.Future`, or Redis Streams for multi-worker deployments).
 
 ## AI Agent System
+
+
+<Frame caption="Native SDK chat path vs LangChain agent path">
+  <img src="/images/diagrams/ai-agent-routing.svg" alt="AI agent routing diagram" />
+</Frame>
 
 ### 12 LLM Providers
 

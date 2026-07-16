@@ -1,0 +1,239 @@
+---
+title: "Filesystem & Shell"
+description: "Read, modify, and search files, and run shell commands from workflows"
+---
+
+Four nodes give workflows (and AI agents) a filesystem: **File Read**, **File Modify**, **FS Search**, and **Shell**. All four operate inside the workflow's own workspace folder and double as agent tools (`file_read`, `file_modify`, `fs_search`, `shell_execute`) when connected to an AI Agent's tools input.
+
+<Warning>
+These nodes touch **real files on disk** -- everything inside the workflow's workspace folder is genuinely created, overwritten, edited, and deleted. The sandbox confines paths to the workspace; it does not undo anything.
+</Warning>
+
+## Where files live
+
+Each workflow gets a persistent workspace directory at `<DATA_DIR>/workspaces/<workflow_slug>/` -- by default `~/.opencompany/workspaces/<workflow_slug>/`. The directory is created automatically on first use and persists across runs, so files written in one execution are readable in the next.
+
+Every path you pass is interpreted **relative to that workspace root**:
+
+- Absolute anchors are stripped -- `/reports/data.csv`, `C:\reports\data.csv`, and UNC paths all resolve to `reports/data.csv` inside the workspace.
+- Traversal is rejected -- paths containing `..` or `~` fail with a clear error telling you to use a workspace-relative path.
+- `path: "."` in FS Search means the workspace root, not the server's working directory.
+
+Other nodes share the same folder: code executors receive it as `workspace_dir`, and the File Downloader saves into it -- so a file another node produced is immediately visible here.
+
+---
+
+## File Read
+
+Reads a text file from the workspace.
+
+### Parameters
+
+<ParamField path="file_path" type="string" required>
+  File path relative to the workspace root
+</ParamField>
+
+<ParamField path="offset" type="number" default="0">
+  0-indexed starting line
+</ParamField>
+
+<ParamField path="limit" type="number" default="2000">
+  Maximum lines to read (1-10000)
+</ParamField>
+
+### Output
+
+```json
+{
+  "content": "line one\nline two\n...",
+  "line_count": 128,
+  "file_path": "reports/data.csv"
+}
+```
+
+Missing files, directories passed as `file_path`, and paths escaping the workspace all fail with a clean, actionable error. Binary files are not supported -- the node reads text.
+
+---
+
+## File Modify
+
+Creates, overwrites, or edits a file. Two operations:
+
+### Parameters
+
+<ParamField path="operation" type="select" default="write">
+  `write` (create or overwrite) or `edit` (string find-and-replace)
+</ParamField>
+
+<ParamField path="file_path" type="string" required>
+  Target file path
+</ParamField>
+
+<ParamField path="content" type="string">
+  File content (required for `write`)
+</ParamField>
+
+<ParamField path="old_string" type="string">
+  Text to find (required for `edit`)
+</ParamField>
+
+<ParamField path="new_string" type="string">
+  Replacement text (`edit`)
+</ParamField>
+
+<ParamField path="replace_all" type="boolean" default="false">
+  Replace every occurrence. When `false`, `old_string` must appear **exactly once** in the file -- zero or multiple matches fail the edit.
+</ParamField>
+
+### Output
+
+Write:
+
+```json
+{"operation": "write", "file_path": "notes/summary.md"}
+```
+
+Edit:
+
+```json
+{"operation": "edit", "file_path": "notes/summary.md", "occurrences": 1}
+```
+
+<Warning>
+`write` always overwrites -- there is no "fail if exists" flag. An existing file at the target path is replaced wholesale. And `replace_all` with an empty **New String** deletes every occurrence of **Old String**, with no safeguard.
+</Warning>
+
+---
+
+## FS Search
+
+Three query modes over the workspace, selected by **Mode**:
+
+### Parameters
+
+<ParamField path="mode" type="select" default="ls">
+  `ls` (list a directory), `glob` (find files by pattern), or `grep` (search file contents by regex)
+</ParamField>
+
+<ParamField path="path" type="string" default=".">
+  Directory to search in, workspace-relative
+</ParamField>
+
+<ParamField path="pattern" type="string">
+  Glob pattern (`glob` mode, e.g. `**/*.md`) or regex (`grep` mode). Required for both; unused by `ls`.
+</ParamField>
+
+### Output
+
+```json
+// ls -- directory entries
+{"path": ".", "entries": ["...file info objects..."], "count": 4}
+
+// glob -- files matching the pattern
+{"path": ".", "pattern": "**/*.csv", "matches": ["...file info objects..."], "count": 2}
+
+// grep -- lines matching the regex
+{"path": ".", "pattern": "TODO", "matches": ["...match objects..."], "count": 3}
+```
+
+`**` globs work. There is no result cap -- a `**/*` glob over a huge workspace returns every match, so keep patterns specific.
+
+---
+
+## Shell
+
+Runs a short-lived shell command inside the workspace. The command grammar is **Nushell** (`nu`), chosen so commands behave identically on Windows, macOS, and Linux -- common file operations (`ls`, `cp`, `mv`, `mkdir`, `rm`, `open`) are Nushell builtins. When `nu` is not installed, the node falls back to the system shell.
+
+The environment is inherited from the server, so external tools on your PATH -- `npm`, `node`, `python`, `git` -- are reachable.
+
+### Parameters
+
+<ParamField path="command" type="string" required>
+  Nushell command to run
+</ParamField>
+
+<ParamField path="timeout" type="number" default="30">
+  Maximum seconds (1-600). On timeout the process is killed and `exit_code` is 124.
+</ParamField>
+
+### Nushell is not bash
+
+- `&&` and `||` are rejected up-front with a corrective error -- use `;` for sequencing or `try { ... } catch { ... }` for error handling.
+- `$VAR`, backticks, and `>` redirection differ from bash. Nushell has its own idioms for each.
+
+### Output
+
+```json
+{
+  "stdout": "3\n",
+  "exit_code": 0,
+  "truncated": false,
+  "command": "ls reports | length"
+}
+```
+
+Notes on the payload:
+
+- `stdout` combines the command's output (stderr lines are prefixed `[stderr]`) and is stripped of ANSI colour codes.
+- **A non-zero `exit_code` still counts as a successful node run** -- the node reports that the command finished, not that it succeeded. Branch on `exit_code` downstream.
+- `exit_code: 124` means the command hit **Timeout** and was killed.
+- Very long output is capped, with `truncated: true` set.
+- Stdin is empty -- upstream `input_data` does not reach the command. Write inputs to a file first if a command needs them.
+
+For long-running processes (dev servers, watchers), use the **Process Manager** node instead -- Shell kills its command at **Timeout**.
+
+---
+
+## Example: summarize new files on a schedule
+
+Periodically check the workspace for reports and have an agent summarize what is there:
+
+```
+[Cron Scheduler] --> [FS Search] --> [AI Agent] --> [Console]
+```
+
+1. **Cron Scheduler** -- e.g. every hour.
+2. **FS Search** -- **Mode**: `glob`, **Path**: `.`, **Pattern**: `reports/**/*.md`.
+3. **AI Agent** -- prompt: "Here is a file listing from the workspace. Note any files added since your last summary and describe what the folder contains." Connect **File Read** to the agent's tools input so it can open files it finds interesting.
+4. **Console** -- shows the summary each run.
+
+This is **polling**: the schedule re-lists matching files on every tick, and the agent compares against what it saw before. There is no filesystem watch trigger -- a file appearing between ticks is picked up on the next run, not instantly.
+
+---
+
+## Tips
+
+<Tip>
+Give an agent all four nodes as tools and it can manage the workspace end-to-end: `fs_search` to explore, `file_read` to inspect, `file_modify` to write, `shell_execute` to run tools against the results.
+</Tip>
+
+<Tip>
+Not sure what exists? Run **FS Search** with **Mode** `ls` first -- the error messages for bad paths also point you there.
+</Tip>
+
+<Tip>
+Prefer **File Modify**'s `edit` with a unique **Old String** over rewriting whole files -- the uniqueness check catches accidental multi-replacements before they happen.
+</Tip>
+
+<Warning>
+Shell's `exit_code` is where failures live. A failing command does not fail the node -- check `exit_code != 0` in downstream logic.
+</Warning>
+
+---
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Code Executors" icon="code" href="/nodes/code">
+    Transform file contents with Python, JS, or TS
+  </Card>
+  <Card title="Schedulers & Triggers" icon="clock" href="/nodes/schedulers">
+    Poll the workspace on a schedule
+  </Card>
+  <Card title="AI Agents" icon="robot" href="/nodes/ai-agent">
+    Let agents read, write, and search files as tools
+  </Card>
+  <Card title="Document Processing" icon="file-lines" href="/nodes/documents">
+    Download and parse documents into the workspace
+  </Card>
+</CardGroup>

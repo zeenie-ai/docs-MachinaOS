@@ -5,7 +5,11 @@ description: Learn the basics of building workflows in OpenCompany
 
 # Your First Workflow
 
-This tutorial covers the fundamentals of creating workflows in OpenCompany.
+<Info>
+Zero credentials needed — this tutorial uses only built-in nodes. About 10 minutes.
+</Info>
+
+This tutorial covers the fundamentals of creating workflows in OpenCompany. If you want the guided chat pipeline instead, see the [quickstart](/quickstart).
 
 ## Understanding the Interface
 
@@ -28,10 +32,10 @@ The toolbar **Normal / Dev** toggle filters the palette. Normal mode shows only 
 
 ### Toolbar
 Top bar with workflow controls:
-- **File** - New, Open, Save, Export
-- **Run** - Execute selected node
-- **Deploy** - Start workflow triggers
-- **Stop** - Cancel execution
+- **File** - New Workflow, Open, Export, Import, Copy as JSON
+- **Start** - Run the workflow (triggers begin listening); becomes **Stop** while running
+- **Save** - Store your changes
+- A per-node **Run** button lives inside each node's parameter panel for testing one node
 
 ## Node Basics
 
@@ -87,20 +91,24 @@ Let's build a workflow that triggers on a schedule and logs the time.
 
 1. Drag **Python Executor** from Code Executors
 2. Connect Cron output to Python input
-3. Add this code:
+3. Add this code (`datetime` is pre-injected — `import` statements are blocked in the sandbox):
 
 ```python
-from datetime import datetime
-
 current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 output = {"time": current_time, "message": f"Triggered at {current_time}"}
 ```
 
-### Step 3: Deploy
+### Step 3: Add a Console node
 
-1. Click **Deploy** in the toolbar
-2. The workflow will run every 5 minutes
-3. Click **Stop** to cancel
+1. Drag **Console** from Utilities (visible in **Dev** mode)
+2. Connect the Python Executor's output to the Console's input
+3. The Console prints each run into the **Console** tab of the bottom panel — that is where you see your workflow working
+
+### Step 4: Start it
+
+1. Press **Save**, then the green **Start** button in the toolbar
+2. The workflow runs every 5 minutes; watch the results arrive in the **Console** tab
+3. Press **Stop** when you are done
 
 ## Keyboard Shortcuts
 
